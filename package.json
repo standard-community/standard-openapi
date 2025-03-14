@@ -1,5 +1,5 @@
 {
-  "name": "@standard-json/workspace",
+  "name": "@standard-openapi/workspace",
   "version": "0.0.1",
   "scripts": {
     "commit": "czg",
