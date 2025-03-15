@@ -12,8 +12,8 @@ describe("basic", () => {
       myUnion: "number | boolean",
     }).describe("My neat object schema");
 
-    const jsonSchema = await toOpenAPISchema(schema);
-    expect(jsonSchema).toEqual({});
+    const specs = await toOpenAPISchema(schema);
+    expect(specs).toEqual({});
   });
 
   it("valibot", async () => {
@@ -25,8 +25,8 @@ describe("basic", () => {
       v.description("My neat object schema"),
     );
 
-    const jsonSchema = await toOpenAPISchema(schema);
-    expect(jsonSchema).toEqual({});
+    const specs = await toOpenAPISchema(schema);
+    expect(specs).toEqual({});
   });
 
   it("zod", async () => {
@@ -37,7 +37,7 @@ describe("basic", () => {
       })
       .describe("My neat object schema");
 
-    const jsonSchema = await toOpenAPISchema(schema);
-    expect(jsonSchema).toEqual({});
+    const specs = await toOpenAPISchema(schema);
+    expect(specs).toEqual({});
   });
 });
