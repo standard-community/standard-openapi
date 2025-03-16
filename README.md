@@ -14,6 +14,15 @@ Install the main package -
 pnpm add @standard-community/standard-openapi
 ```
 
+For some specific vendor, install the respective package also -
+
+| Vendor  | Package |
+| ------- | ------- |
+| Zod     | `zod-openapi` |
+| Valibot | `@standard-community/standard-json` `@valibot/to-json-schema` `json-schema-walker` |
+| ArkType | `@standard-community/standard-json` `json-schema-walker` |
+| Effect Schema | `@standard-community/standard-json` `json-schema-walker` |
+
 ## Usage
 
 ```ts
