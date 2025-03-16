@@ -1,4 +1,4 @@
-import type { GeneratorFn } from "./types";
+import type { GeneratorFn } from "./types.js";
 import { createSchema } from "zod-openapi";
 import type * as z from "zod";
 

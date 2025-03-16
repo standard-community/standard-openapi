@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as v from "valibot";
 import * as z from "zod";
 
-import { toOpenAPISchema } from "../src";
+import { toOpenAPISchema } from "../src/index.js";
 
 describe("basic", () => {
   it("arktype", async () => {

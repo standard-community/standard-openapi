@@ -1,6 +1,6 @@
 import type { SchemaResult } from "zod-openapi";
-import convert from "./convertor";
-import type { GeneratorFn } from "./types";
+import convert from "./convertor.js";
+import type { GeneratorFn } from "./types.js";
 import { toJsonSchema } from "@standard-community/standard-json";
 
 export const generator: GeneratorFn = async (schema) => {
