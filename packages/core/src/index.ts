@@ -1,7 +1,9 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { Handler } from "./types.js";
 
-export const toOpenAPISchema = async (schema: StandardSchemaV1) => {
+export const toOpenAPISchema = async (
+  schema: StandardSchemaV1, metadata?: Record<string, unknown>
+) => {
   const vendor = schema["~standard"].vendor;
 
   let mod: Handler;
@@ -20,5 +22,5 @@ export const toOpenAPISchema = async (schema: StandardSchemaV1) => {
       );
   }
 
-  return await (await mod).generator(schema);
+  return await (await mod).generator(schema, metadata);
 };
