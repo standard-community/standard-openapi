@@ -4,15 +4,14 @@ import type { Handler } from "./types.js";
 export const toOpenAPISchema = async (schema: StandardSchemaV1) => {
   const vendor = schema["~standard"].vendor;
 
+  // keep this switch if any other libs are added
   let mod: Handler;
   switch (vendor) {
     case "arktype":
     case "effect":
     case "valibot":
-      mod = import("./default.js");
-      break;
     case "zod":
-      mod = import("./zod.js");
+      mod = import("./default.js");
       break;
     default:
       throw new Error(
