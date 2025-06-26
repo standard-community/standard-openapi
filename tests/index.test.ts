@@ -1,9 +1,9 @@
 import { type } from "arktype";
-import { describe, expect, it } from "vitest";
 import * as v from "valibot";
+import { describe, expect, it } from "vitest";
 import * as z from "zod";
 
-import { toOpenAPISchema } from "../src/index.js";
+import { toOpenAPISchema } from "../src/old/index.js";
 
 describe("basic", () => {
   it("arktype", async () => {

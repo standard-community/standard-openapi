@@ -1,24 +1,18 @@
+import { toJsonSchema } from "@standard-community/standard-json";
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { Handler } from "./types.js";
+import { convertToOpenAPISchema } from "./convert.js";
+import { vendorHooks } from "./vendors/index.js";
 
+/**
+ * Converts a Standard Schema to a OpenAPI schema.
+ */
 export const toOpenAPISchema = async (schema: StandardSchemaV1) => {
-  const vendor = schema["~standard"].vendor;
+  let jsonSchema = await toJsonSchema(schema);
 
-  let mod: Handler;
-  switch (vendor) {
-    case "arktype":
-    case "effect":
-    case "valibot":
-      mod = import("./default.js");
-      break;
-    case "zod":
-      mod = import("./zod.js");
-      break;
-    default:
-      throw new Error(
-        `standard-openapi: Unsupported schema vendor "${vendor}"`,
-      );
-  }
+  const hook = vendorHooks[schema["~standard"].vendor];
 
-  return await (await mod).generator(schema);
+  if (hook) jsonSchema = hook(schema, jsonSchema);
+
+  // Convert JSON Schema to OpenAPI schema
+  return convertToOpenAPISchema(jsonSchema);
 };
