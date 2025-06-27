@@ -6,8 +6,11 @@ import { vendorHooks } from "./vendors/index.js";
 /**
  * Converts a Standard Schema to a OpenAPI schema.
  */
-export const toOpenAPISchema = async (schema: StandardSchemaV1) => {
-  let jsonSchema = await toJsonSchema(schema);
+export const toOpenAPISchema = async (
+  schema: StandardSchemaV1,
+  options?: Record<string, unknown>,
+) => {
+  let jsonSchema = await toJsonSchema(schema, options);
 
   const hook = vendorHooks[schema["~standard"].vendor];
 

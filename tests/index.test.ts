@@ -3,7 +3,7 @@ import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 
-import { toOpenAPISchema } from "../src/old/index.js";
+import { toOpenAPISchema } from "../src/index.js";
 
 describe("basic", () => {
   it("arktype", async () => {
@@ -13,7 +13,25 @@ describe("basic", () => {
     }).describe("My neat object schema");
 
     const specs = await toOpenAPISchema(schema);
-    expect(specs).toEqual({});
+    expect(specs).toEqual({
+      "description": "My neat object schema",
+      "properties": {
+        "myString": {
+          "type": "string",
+        },
+        "myUnion": {
+          "anyOf": [
+            { type: "number" },
+            { type: "boolean" },
+          ],
+        },
+      },
+      "required": [
+        "myString",
+        "myUnion",
+      ],
+      "type": "object",
+    });
   });
 
   it("valibot", async () => {
@@ -26,7 +44,25 @@ describe("basic", () => {
     );
 
     const specs = await toOpenAPISchema(schema);
-    expect(specs).toEqual({});
+    expect(specs).toEqual({
+      "description": "My neat object schema",
+      "properties": {
+        "myString": {
+          "type": "string",
+        },
+        "myUnion": {
+          "anyOf": [
+            { type: "number" },
+            { type: "boolean" },
+          ],
+        },
+      },
+      "required": [
+        "myString",
+        "myUnion",
+      ],
+      "type": "object",
+    });
   });
 
   it("zod", async () => {
@@ -38,6 +74,25 @@ describe("basic", () => {
       .describe("My neat object schema");
 
     const specs = await toOpenAPISchema(schema);
-    expect(specs).toEqual({});
+    expect(specs).toEqual({
+      "additionalProperties": false,
+      "description": "My neat object schema",
+      "properties": {
+        "myString": {
+          "type": "string",
+        },
+        "myUnion": {
+          "type": [
+            "number",
+            "boolean",
+          ],
+        },
+      },
+      "required": [
+        "myString",
+        "myUnion",
+      ],
+      "type": "object",
+    });
   });
 });
