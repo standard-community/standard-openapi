@@ -1,8 +1,19 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
-import type { JSONSchema7 } from "json-schema";
+import { errorMessageWrapper, type ToOpenAPISchemaFn } from "./utils.js";
 
-export const vendorHooks: Record<
-  string,
-  | ((schema: StandardSchemaV1, jsonSchema: JSONSchema7) => JSONSchema7)
-  | undefined
-> = {};
+export const getToOpenAPISchemaFn = async (
+  vendor: string,
+): Promise<ToOpenAPISchemaFn> => {
+  switch (vendor) {
+    case "valibot":
+      return (await import("./valibot.js")).default();
+    case "zod":
+      return (await import("./zod.js")).default();
+    case "arktype":
+    case "effect":
+      return (await import("./default.js")).default();
+    default:
+      throw new Error(
+        errorMessageWrapper(`Unsupported schema vendor "${vendor}".`),
+      );
+  }
+};
