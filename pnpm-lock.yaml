@@ -24,11 +24,11 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(typescript@5.8.3)
       zod:
-        specifier: ^3.25.67
+        specifier: ^3.25.0 || ^4.0.0
         version: 3.25.67
       zod-openapi:
-        specifier: ^4.2.4
-        version: 4.2.4(zod@3.25.67)
+        specifier: ^4
+        version: 4.2.3(zod@3.25.67)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.0.4
@@ -1410,12 +1410,6 @@ packages:
     peerDependencies:
       zod: ^3.21.4
 
-  zod-openapi@4.2.4:
-    resolution: {integrity: sha512-tsrQpbpqFCXqVXUzi3TPwFhuMtLN3oNZobOtYnK6/5VkXsNdnIgyNr4r8no4wmYluaxzN3F7iS+8xCW8BmMQ8g==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.21.4
-
   zod-to-json-schema@3.24.6:
     resolution: {integrity: sha512-h/z3PKvcTcTetyjl1fkj79MHNEjm+HpD6NXheWjzOekY7kV+lwDYnHw+ivHkijnCSMz1yJaWBD9vu/Fcmk+vEg==}
     peerDependencies:
@@ -2502,7 +2496,7 @@ snapshots:
     dependencies:
       zod: 3.24.2
 
-  zod-openapi@4.2.4(zod@3.25.67):
+  zod-openapi@4.2.3(zod@3.25.67):
     dependencies:
       zod: 3.25.67
 

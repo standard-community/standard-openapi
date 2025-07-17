@@ -7,12 +7,14 @@ export type OpenAPIMetadata = {
   examples?: [unknown, ...unknown[]];
 };
 
+export type ToOpenAPISchemaContext = {
+  components: OpenAPIV3_1.ComponentsObject;
+  options?: Record<string, unknown>;
+};
+
 export type ToOpenAPISchemaFn = (
   schema: StandardSchemaV1,
-  context: {
-    components: OpenAPIV3_1.ComponentsObject;
-    options?: Record<string, unknown>;
-  },
+  context: ToOpenAPISchemaContext,
 ) => Promise<OpenAPIV3_1.SchemaObject>;
 
 export const errorMessageWrapper = (message: string) =>

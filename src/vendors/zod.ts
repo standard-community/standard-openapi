@@ -5,12 +5,15 @@ import type { $ZodType } from "zod/v4/core";
 import { convertToOpenAPISchema } from "./convert.js";
 import { errorMessageWrapper, type ToOpenAPISchemaFn } from "./utils.js";
 
-export default async function getToOpenAPISchemaFn(): Promise<ToOpenAPISchemaFn> {
+export default async function getToOpenAPISchemaFn(): Promise<
+  ToOpenAPISchemaFn
+> {
   return async (schema, context) => {
     // https://zod.dev/library-authors?id=how-to-support-zod-and-zod-mini-simultaneously#how-to-support-zod-3-and-zod-4-simultaneously
     if ("_zod" in (schema as $ZodType | ZodTypeAny)) {
       return convertToOpenAPISchema(
         await toJsonSchema(schema, context.options),
+        context,
       );
     }
 
@@ -33,7 +36,7 @@ export default async function getToOpenAPISchemaFn(): Promise<ToOpenAPISchemaFn>
       return _schema as OpenAPIV3_1.SchemaObject;
     } catch {
       throw new Error(
-        errorMessageWrapper(`Missing dependencies "zod-openapi".`),
+        errorMessageWrapper(`Missing dependencies "zod-openapi v4".`),
       );
     }
   };
