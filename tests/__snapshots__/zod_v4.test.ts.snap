@@ -1,0 +1,67 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`zod v4 > basic 1`] = `
+{
+  "components": undefined,
+  "schema": {
+    "additionalProperties": false,
+    "description": "My neat object schema",
+    "properties": {
+      "myString": {
+        "type": "string",
+      },
+      "myUnion": {
+        "anyOf": [
+          {
+            "type": "number",
+          },
+          {
+            "type": "boolean",
+          },
+        ],
+      },
+    },
+    "required": [
+      "myString",
+      "myUnion",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`zod v4 > with metadata 1`] = `
+{
+  "components": {
+    "schemas": {
+      "MyNeatObjectSchema": {
+        "additionalProperties": false,
+        "description": "My neat object schema",
+        "properties": {
+          "myString": {
+            "type": "string",
+          },
+          "myUnion": {
+            "anyOf": [
+              {
+                "type": "number",
+              },
+              {
+                "type": "boolean",
+              },
+            ],
+          },
+        },
+        "required": [
+          "myString",
+          "myUnion",
+        ],
+        "type": "object",
+      },
+    },
+  },
+  "schema": {
+    "$ref": "#/components/schemas/MyNeatObjectSchema",
+  },
+}
+`;
