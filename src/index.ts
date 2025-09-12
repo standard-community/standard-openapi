@@ -12,7 +12,10 @@ import {
  * Converts a Standard Schema to a OpenAPI schema.
  */
 export const toOpenAPISchema = quansync({
-  sync: (schema: StandardSchemaV1, context: Partial<ToOpenAPISchemaContext> = {}) => {
+  sync: (
+    schema: StandardSchemaV1,
+    context: Partial<ToOpenAPISchemaContext> = {},
+  ) => {
     const fn = openapiVendorMap.get(schema["~standard"].vendor);
 
     if (!fn) {
@@ -30,9 +33,12 @@ export const toOpenAPISchema = quansync({
     return {
       schema: _schema,
       components: Object.keys(components).length > 0 ? components : undefined,
-    }
+    };
   },
-  async: async (schema: StandardSchemaV1, context: Partial<ToOpenAPISchemaContext> = {}) => {
+  async: async (
+    schema: StandardSchemaV1,
+    context: Partial<ToOpenAPISchemaContext> = {},
+  ) => {
     const fn = await getToOpenAPISchemaFn(schema["~standard"].vendor);
 
     const { components = {}, options } = context;
@@ -42,7 +48,7 @@ export const toOpenAPISchema = quansync({
     return {
       schema: _schema,
       components: Object.keys(components).length > 0 ? components : undefined,
-    }
+    };
   },
 });
 

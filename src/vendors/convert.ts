@@ -75,13 +75,13 @@ export function convertToOpenAPISchema(
       } else if (key === "allOf" || key === "anyOf" || key === "oneOf") {
         // These are arrays of schemas
         _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-          convertToOpenAPISchema(item, context)
+          convertToOpenAPISchema(item, context),
         );
       } else if (key === "items") {
         // Items can be a schema or array of schemas
         if (Array.isArray(_jsonSchema[key])) {
           _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-            convertToOpenAPISchema(item, context)
+            convertToOpenAPISchema(item, context),
           );
         } else {
           _jsonSchema[key] = convertToOpenAPISchema(_jsonSchema[key], context);

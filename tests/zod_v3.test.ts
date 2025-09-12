@@ -23,7 +23,8 @@ describe("zod v3", () => {
         myString: z.string(),
         myUnion: z.union([z.number(), z.boolean()]),
       })
-      .describe("My neat object schema").openapi({
+      .describe("My neat object schema")
+      .openapi({
         ref: "MyNeatObjectSchema",
       });
 

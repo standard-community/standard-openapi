@@ -22,7 +22,8 @@ describe("zod v4", () => {
         myString: z.string(),
         myUnion: z.union([z.number(), z.boolean()]),
       })
-      .describe("My neat object schema").meta({
+      .describe("My neat object schema")
+      .meta({
         ref: "MyNeatObjectSchema",
       });
 
