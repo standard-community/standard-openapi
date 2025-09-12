@@ -18,7 +18,7 @@ For some specific vendor, install the respective package also -
 
 | Vendor  | Package |
 | ------- | ------- |
-| Zod v3  | `zod-openapi` |
+| Zod v3  | `zod-openapi@4` |
 | Valibot | `@valibot/to-json-schema` |
 
 ## Usage
@@ -39,16 +39,27 @@ const schema = v.pipe(
 const openapiSchema = await toOpenAPISchema(schema);
 ```
 
-## Compatibility
+### Sync Usage
 
-List of supported validators -
+This is useful for -
 
-| Vendor  | Supported |
-| ------- | ------- |
-| Zod     | ✅ |
-| Valibot | ✅ |
-| ArkType | ✅ |
-| Typebox | ✅ (Using [TypeMap](https://github.com/sinclairzx81/typemap) |
-| Effect Schema | 🛠️ |
+1. Adding support for Unsupported validation libs, like Sury
+2. Customize the toOpenAPISchema of a supported lib
 
-You can check the compatibility versions at [standardschema.dev](https://standardschema.dev/)
+```ts
+import { toOpenAPISchema, loadVendor } from "@standard-community/standard-openapi";
+import { convertSchemaToJson } from "your-validation-lib";
+
+// The lib should support Standard Schema
+// as we use 'schema["~standard"].vendor' to get the vendor name
+// Eg. loadVendor(zod["~standard"].vendor, convertorFunction)
+loadVendor("validation-lib-name", convertSchemaToJson)
+
+// Define your validation schema
+const schema = {
+    // ...
+};
+
+// Convert it to OpenAPI Schema
+const openapiSchema = toOpenAPISchema(schema);
+```
