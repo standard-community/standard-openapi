@@ -8,7 +8,7 @@ export function convertToOpenAPISchema(
 ): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject {
   const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
 
-  // Handle nullable property converstion
+  // Handle nullable property conversion
   if ("nullable" in _jsonSchema && _jsonSchema.nullable === true) {
     if (_jsonSchema.type) {
       // Convert type + nullable to type array
