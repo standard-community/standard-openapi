@@ -4,10 +4,8 @@ import type { OpenAPIV3_1 } from "openapi-types";
 import { convertToOpenAPISchema } from "./convert.js";
 import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
 
-export default async function getToOpenAPISchemaFn(): Promise<
-  ToOpenAPISchemaFn
-> {
-  return async (schema, context) =>
+export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
+  return (schema, context) =>
     toJsonSchema(
       schema,
       {

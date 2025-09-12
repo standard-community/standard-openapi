@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import z from "zod";
 import "zod-openapi/extend";
 
-import { toOpenAPISchema } from "../src/index.js";
+import { toOpenAPISchema } from "~/index.js";
 
 describe("zod v3", () => {
   it("basic", async () => {

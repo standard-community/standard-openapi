@@ -1,7 +1,7 @@
 import * as v from "valibot";
 import { describe, expect, it } from "vitest";
 
-import { toOpenAPISchema } from "../src/index.js";
+import { toOpenAPISchema } from "~/index.js";
 
 describe("valibot", () => {
   it("basic", async () => {

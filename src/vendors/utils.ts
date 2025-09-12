@@ -15,7 +15,9 @@ export type ToOpenAPISchemaContext = {
 export type ToOpenAPISchemaFn = (
   schema: StandardSchemaV1,
   context: ToOpenAPISchemaContext,
-) => Promise<OpenAPIV3_1.SchemaObject>;
+) => OpenAPIV3_1.SchemaObject | Promise<OpenAPIV3_1.SchemaObject>;
 
 export const errorMessageWrapper = (message: string) =>
   `standard-openapi: ${message}`;
+
+export const openapiVendorMap = new Map<string, ToOpenAPISchemaFn>();
