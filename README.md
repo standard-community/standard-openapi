@@ -64,7 +64,7 @@ const openapiSchema = toOpenAPISchema(schema);
 #### Customize the toOpenAPISchema of a supported lib
 
 ```ts
-import { toOpenAPISchema } from "@standard-community/standard-openapi";
+import { toOpenAPISchema, loadVendor } from "@standard-community/standard-openapi";
 import zodHandler from "@standard-community/standard-openapi/zod";
 
 // Or pass a custom implmentation
