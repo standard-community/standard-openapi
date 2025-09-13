@@ -76,7 +76,7 @@
     }
   },
   "peerDependencies": {
-    "@standard-community/standard-json": "^0.3.0",
+    "@standard-community/standard-json": "^0.3.1",
     "@standard-schema/spec": "^1.0.0",
     "arktype": "^2.1.20",
     "openapi-types": "^12.1.3",

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@standard-community/standard-json':
-        specifier: ^0.3.0
-        version: 0.3.0(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
+        specifier: ^0.3.1
+        version: 0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
@@ -24,7 +24,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(typescript@5.8.3)
       zod:
-        specifier: ^3.25.0 || ^4.0.0
+        specifier: ^3.25.0 || 4.1.5
         version: 3.25.67
       zod-openapi:
         specifier: ^4
@@ -912,8 +912,8 @@ packages:
       zod-to-json-schema:
         optional: true
 
-  '@standard-community/standard-json@0.3.0':
-    resolution: {integrity: sha512-VbswuF71KxiDb7BfAOU8hjQWtPLkc2g9Y3JF3IoonoR/NfCvYr9SUFP5jJO4zl9kOgCcGAVwcA4P/uBsS2DSnQ==}
+  '@standard-community/standard-json@0.3.1':
+    resolution: {integrity: sha512-QYW1sZWWheij2CZnUL8LAFK5oECJe7cQUqtao1dY4Pjp/RPidOmpgS4L3pm9rR2gzFoyjpS5Q0MhF3c0Bxzevg==}
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
       '@types/json-schema': ^7.0.15
@@ -1967,7 +1967,7 @@ snapshots:
     optionalDependencies:
       arktype: 2.1.9
 
-  '@standard-community/standard-json@0.3.0(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
+  '@standard-community/standard-json@0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
     dependencies:
       '@standard-schema/spec': 1.0.0
       '@types/json-schema': 7.0.15

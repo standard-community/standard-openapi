@@ -4,7 +4,6 @@ exports[`zod v4 > basic 1`] = `
 {
   "components": undefined,
   "schema": {
-    "additionalProperties": false,
     "description": "My neat object schema",
     "properties": {
       "myString": {
@@ -35,7 +34,6 @@ exports[`zod v4 > with metadata 1`] = `
   "components": {
     "schemas": {
       "MyNeatObjectSchema": {
-        "additionalProperties": false,
         "description": "My neat object schema",
         "properties": {
           "myString": {
