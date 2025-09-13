@@ -3,7 +3,7 @@ import { getToOpenAPISchemaFn } from "./vendors/index.js";
 import {
   openapiVendorMap,
   type ToOpenAPISchemaContext,
-  type ToOpenAPISchemaFn
+  type ToOpenAPISchemaFn,
 } from "./vendors/utils.js";
 
 /**
@@ -23,7 +23,7 @@ export const toOpenAPISchema = async (
     schema: _schema,
     components: Object.keys(components).length > 0 ? components : undefined,
   };
-}
+};
 
 /**
  * Load vendor before calling toOpenAPISchema,
