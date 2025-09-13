@@ -12,18 +12,18 @@ export const getToOpenAPISchemaFn = async (
     return cached;
   }
 
-  let vendorFnPromise: ToOpenAPISchemaFn | Promise<ToOpenAPISchemaFn>;
+  let vendorFn: ToOpenAPISchemaFn;
 
   switch (vendor) {
     case "valibot":
-      vendorFnPromise = (await import("./valibot.js")).default();
+      vendorFn = (await import("./valibot.js")).default();
       break;
     case "zod":
-      vendorFnPromise = (await import("./zod.js")).default();
+      vendorFn = (await import("./zod.js")).default();
       break;
     case "arktype":
     case "effect":
-      vendorFnPromise = (await import("./default.js")).default();
+      vendorFn = (await import("./default.js")).default();
       break;
     default:
       throw new Error(
@@ -31,7 +31,6 @@ export const getToOpenAPISchemaFn = async (
       );
   }
 
-  const vendorFn = await vendorFnPromise;
   openapiVendorMap.set(vendor, vendorFn);
   return vendorFn;
 };

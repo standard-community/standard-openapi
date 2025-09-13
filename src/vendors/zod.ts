@@ -1,18 +1,17 @@
-import { toJsonSchema } from "@standard-community/standard-json";
 import type { OpenAPIV3_1 } from "openapi-types";
 import type { ZodTypeAny } from "zod/v3";
 import type { $ZodType } from "zod/v4/core";
-import { convertToOpenAPISchema } from "./convert.js";
+import getDefaultToOpenAPISchemaFn from "./default.js";
 import { errorMessageWrapper, type ToOpenAPISchemaFn } from "./utils.js";
 
-export default async function getToOpenAPISchemaFn(): Promise<ToOpenAPISchemaFn> {
+export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) => {
     // https://zod.dev/library-authors?id=how-to-support-zod-and-zod-mini-simultaneously#how-to-support-zod-3-and-zod-4-simultaneously
     if ("_zod" in (schema as $ZodType | ZodTypeAny)) {
-      return convertToOpenAPISchema(
-        await toJsonSchema(schema, context.options),
-        context,
-      );
+      return getDefaultToOpenAPISchemaFn()(schema, {
+        components: context.components,
+        options: { io: "input", ...context.options },
+      });
     }
 
     try {
@@ -20,7 +19,7 @@ export default async function getToOpenAPISchemaFn(): Promise<ToOpenAPISchemaFn>
       const { schema: _schema, components } = createSchema(
         // @ts-expect-error
         schema,
-        context.options,
+        { schemaType: "input", ...context.options },
       );
 
       if (components) {
