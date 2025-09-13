@@ -24,7 +24,7 @@ importers:
         specifier: ^1.1.0
         version: 1.1.0(typescript@5.8.3)
       zod:
-        specifier: ^3.25.0 || 4.1.5
+        specifier: ^3.25.0 || ^4.0.0
         version: 3.25.67
       zod-openapi:
         specifier: ^4
