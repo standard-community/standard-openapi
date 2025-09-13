@@ -41,16 +41,13 @@ const openapiSchema = await toOpenAPISchema(schema);
 
 ### Sync Usage
 
-This is useful for -
-
-1. Adding support for Unsupported validation libs, like Sury
-2. Customize the toOpenAPISchema of a supported lib
+#### Adding support for Unsupported validation libs
 
 ```ts
 import { toOpenAPISchema, loadVendor } from "@standard-community/standard-openapi";
 import { convertSchemaToJson } from "your-validation-lib";
 
-// The lib should support Standard Schema
+// The lib should support Standard Schema, like Sury
 // as we use 'schema["~standard"].vendor' to get the vendor name
 // Eg. loadVendor(zod["~standard"].vendor, convertorFunction)
 loadVendor("validation-lib-name", convertSchemaToJson)
@@ -62,4 +59,26 @@ const schema = {
 
 // Convert it to OpenAPI Schema
 const openapiSchema = toOpenAPISchema(schema);
+```
+
+#### Customize the toOpenAPISchema of a supported lib
+
+```ts
+import { toOpenAPISchema } from "@standard-community/standard-openapi";
+import zodHandler from "@standard-community/standard-openapi/zod";
+
+// Or pass a custom implmentation
+loadVendor("zod", zodHandler())
+
+// Define your schema
+const schema = v.pipe(
+    v.object({
+        myString: v.string(),
+        myUnion: v.union([v.number(), v.boolean()]),
+    }),
+    v.description("My neat object schema"),
+);
+
+// Convert it to OpenAPI Schema
+const openapiSchema = await toOpenAPISchema(schema);
 ```
