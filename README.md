@@ -64,20 +64,23 @@ const openapiSchema = toOpenAPISchema(schema);
 #### Customize the toOpenAPISchema of a supported lib
 
 ```ts
+import { z } from "zod/v4";
+import { toJSONSchema } from "zod/v4/core";
 import { toOpenAPISchema, loadVendor } from "@standard-community/standard-openapi";
-import zodHandler from "@standard-community/standard-openapi/zod";
+import { convertToOpenAPISchema } from "@standard-community/standard-openapi/convert";
 
 // Or pass a custom implmentation
-loadVendor("zod", zodHandler())
+loadVendor("zod", (schema, context) => {
+    return convertToOpenAPISchema(toJSONSchema(schema, {
+        io: "input"
+    }), context);
+})
 
 // Define your schema
-const schema = v.pipe(
-    v.object({
-        myString: v.string(),
-        myUnion: v.union([v.number(), v.boolean()]),
-    }),
-    v.description("My neat object schema"),
-);
+const schema = z.object({
+    myString: z.string(),
+    myUnion: z.union([z.number(), z.boolean()]),
+}),
 
 // Convert it to OpenAPI Schema
 const openapiSchema = await toOpenAPISchema(schema);
