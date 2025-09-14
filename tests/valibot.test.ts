@@ -5,6 +5,16 @@ import { toOpenAPISchema } from "~/index.js";
 
 describe("valibot", () => {
   it("basic", async () => {
+    const schema = v.object({
+      myString: v.string(),
+      myUnion: v.union([v.number(), v.boolean()]),
+    });
+
+    const specs = await toOpenAPISchema(schema);
+    expect(specs).toMatchSnapshot();
+  });
+
+  it("basic with pipe", async () => {
     const schema = v.pipe(
       v.object({
         myString: v.string(),

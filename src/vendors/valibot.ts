@@ -5,8 +5,8 @@ import { convertToOpenAPISchema } from "./convert.js";
 import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
 
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
-  return (schema, context) =>
-    toJsonSchema(schema, {
+  return async (schema, context) => {
+    const openapiSchema = await toJsonSchema(schema, {
       // @ts-expect-error
       overrideAction: ({ valibotAction, jsonSchema }) => {
         const _jsonSchema = convertToOpenAPISchema(jsonSchema, context);
@@ -41,5 +41,12 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
         return _jsonSchema;
       },
       ...context.options,
-    } satisfies ConversionConfig) as OpenAPIV3_1.SchemaObject;
+    } satisfies ConversionConfig);
+
+    if ("$schema" in openapiSchema) {
+      delete openapiSchema.$schema;
+    }
+
+    return openapiSchema as OpenAPIV3_1.SchemaObject;
+  };
 }

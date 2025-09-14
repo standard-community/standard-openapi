@@ -4,6 +4,34 @@ exports[`valibot > basic 1`] = `
 {
   "components": undefined,
   "schema": {
+    "properties": {
+      "myString": {
+        "type": "string",
+      },
+      "myUnion": {
+        "anyOf": [
+          {
+            "type": "number",
+          },
+          {
+            "type": "boolean",
+          },
+        ],
+      },
+    },
+    "required": [
+      "myString",
+      "myUnion",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`valibot > basic with pipe 1`] = `
+{
+  "components": undefined,
+  "schema": {
     "description": "My neat object schema",
     "properties": {
       "myString": {
