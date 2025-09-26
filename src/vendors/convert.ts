@@ -108,12 +108,15 @@ export function convertToOpenAPISchema(
     // Happens in effect schemas
     const { $ref, $defs } = _jsonSchema;
 
+    // Remove the '#/$defs/' prefix from Effect's internal references
+    const EFFECT_DEFS_PREFIX = "#/$defs/";
+
     context.components.schemas = {
       ...context.components.schemas,
       ...$defs,
     };
     return {
-      $ref: `#/components/schemas/${$ref.slice(8)}`,
+      $ref: `#/components/schemas/${$ref.slice(EFFECT_DEFS_PREFIX.length)}`,
     };
   }
 
