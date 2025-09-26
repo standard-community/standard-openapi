@@ -104,6 +104,17 @@ export function convertToOpenAPISchema(
     return {
       $ref: `#/components/schemas/${ref}`,
     };
+  } else if (_jsonSchema.$ref) {
+    // Happens in effect schemas
+    const { $ref, $defs } = _jsonSchema;
+
+    context.components.schemas = {
+      ...context.components.schemas,
+      ...$defs,
+    };
+    return {
+      $ref: `#/components/schemas/${$ref.slice(8)}`,
+    };
   }
 
   return _jsonSchema;
