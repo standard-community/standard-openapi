@@ -10,13 +10,16 @@ importers:
     dependencies:
       '@standard-community/standard-json':
         specifier: ^0.3.1
-        version: 0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
+        version: 0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
       arktype:
         specifier: ^2.1.20
         version: 2.1.20
+      effect:
+        specifier: ^3.17.14
+        version: 3.17.14
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
@@ -1053,6 +1056,9 @@ packages:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
     engines: {node: '>=0.10.0'}
 
+  effect@3.17.14:
+    resolution: {integrity: sha512-VpIZz72+cg3357vLkNHN8CG+Uq2X0QHNv3qkyGInvG3lG5K7Ala1JliGIAdgNvwzaN37J27FuzVD8m0kEiv2Ig==}
+
   es-module-lexer@1.7.0:
     resolution: {integrity: sha512-jEQoCwk8hyb2AZziIOLhDqpm5+2ww5uIE6lkO/6jcOCusfk6LhMHpXXfBLXTZ7Ydyt0j4VoUQv6uGNYbdW+kBA==}
 
@@ -1083,6 +1089,10 @@ packages:
   expect-type@1.2.1:
     resolution: {integrity: sha512-/kP8CAwxzLVEeFrMm4kMmy4CCDlpipyA7MYLVrdJIkV0fYF0UaigQHRsxHiuY/GEea+bh4KSv3TIlgr+2UL6bw==}
     engines: {node: '>=12.0.0'}
+
+  fast-check@3.23.2:
+    resolution: {integrity: sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==}
+    engines: {node: '>=8.0.0'}
 
   fast-glob@3.3.3:
     resolution: {integrity: sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg==}
@@ -1232,6 +1242,9 @@ packages:
   postcss@8.5.3:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
     engines: {node: ^10 || ^12 || >=14}
+
+  pure-rand@6.1.0:
+    resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
   quansync@0.2.11:
     resolution: {integrity: sha512-AifT7QEbW9Nri4tAwR5M/uzpBuqfZf+zwaEM/QkzEjj7NBuFD2rBuy0K3dE+8wltbezDV7JMA0WfnCPYRSYbXA==}
@@ -1967,7 +1980,7 @@ snapshots:
     optionalDependencies:
       arktype: 2.1.9
 
-  '@standard-community/standard-json@0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
+  '@standard-community/standard-json@0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
     dependencies:
       '@standard-schema/spec': 1.0.0
       '@types/json-schema': 7.0.15
@@ -1975,6 +1988,7 @@ snapshots:
     optionalDependencies:
       '@valibot/to-json-schema': 1.3.0(valibot@1.1.0(typescript@5.8.3))
       arktype: 2.1.20
+      effect: 3.17.14
       valibot: 1.1.0(typescript@5.8.3)
       zod: 3.25.67
       zod-to-json-schema: 3.24.6(zod@3.25.67)
@@ -2089,6 +2103,11 @@ snapshots:
 
   deepmerge@4.3.1: {}
 
+  effect@3.17.14:
+    dependencies:
+      '@standard-schema/spec': 1.0.0
+      fast-check: 3.23.2
+
   es-module-lexer@1.7.0: {}
 
   esbuild@0.24.2:
@@ -2184,6 +2203,10 @@ snapshots:
       '@types/estree': 1.0.6
 
   expect-type@1.2.1: {}
+
+  fast-check@3.23.2:
+    dependencies:
+      pure-rand: 6.1.0
 
   fast-glob@3.3.3:
     dependencies:
@@ -2321,6 +2344,8 @@ snapshots:
       nanoid: 3.3.10
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  pure-rand@6.1.0: {}
 
   quansync@0.2.11: {}
 
