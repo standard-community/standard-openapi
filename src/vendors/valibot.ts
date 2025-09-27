@@ -7,6 +7,7 @@ import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) => {
     const openapiSchema = await toJsonSchema(schema, {
+      errorMode: "ignore",
       // @ts-expect-error
       overrideAction: ({ valibotAction, jsonSchema }) => {
         const _jsonSchema = convertToOpenAPISchema(jsonSchema, context);
