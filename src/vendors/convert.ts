@@ -58,7 +58,10 @@ export function convertToOpenAPISchema(
   ] as const;
 
   nestedSchemaKeys.forEach((key) => {
-    if (_jsonSchema[key]) {
+    if (
+      _jsonSchema[key] &&
+      (typeof _jsonSchema[key] === "object" || Array.isArray(_jsonSchema[key]))
+    ) {
       if (
         key === "properties" ||
         key === "definitions" ||

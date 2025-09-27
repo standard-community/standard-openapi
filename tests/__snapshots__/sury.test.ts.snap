@@ -1,0 +1,66 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`sury > basic 1`] = `
+{
+  "components": undefined,
+  "schema": {
+    "additionalProperties": true,
+    "properties": {
+      "myString": {
+        "type": "string",
+      },
+      "myUnion": {
+        "anyOf": [
+          {
+            "type": "number",
+          },
+          {
+            "type": "boolean",
+          },
+        ],
+      },
+    },
+    "required": [
+      "myString",
+      "myUnion",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`sury > with metadata 1`] = `
+{
+  "components": {
+    "schemas": {
+      "MyNeatObjectSchema": {
+        "additionalProperties": true,
+        "description": "My neat object schema",
+        "properties": {
+          "myString": {
+            "type": "string",
+          },
+          "myUnion": {
+            "anyOf": [
+              {
+                "type": "number",
+              },
+              {
+                "type": "boolean",
+              },
+            ],
+          },
+        },
+        "required": [
+          "myString",
+          "myUnion",
+        ],
+        "type": "object",
+      },
+    },
+  },
+  "schema": {
+    "$ref": "#/components/schemas/MyNeatObjectSchema",
+  },
+}
+`;

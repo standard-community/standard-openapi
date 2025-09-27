@@ -1,8 +1,4 @@
-import {
-  errorMessageWrapper,
-  openapiVendorMap,
-  type ToOpenAPISchemaFn,
-} from "./utils.js";
+import { openapiVendorMap, type ToOpenAPISchemaFn } from "./utils.js";
 
 export const getToOpenAPISchemaFn = async (
   vendor: string,
@@ -21,15 +17,8 @@ export const getToOpenAPISchemaFn = async (
     case "zod":
       vendorFn = (await import("./zod.js")).default();
       break;
-    case "arktype":
-    case "effect":
-    case "typebox":
-      vendorFn = (await import("./default.js")).default();
-      break;
     default:
-      throw new Error(
-        errorMessageWrapper(`Unsupported schema vendor "${vendor}".`),
-      );
+      vendorFn = (await import("./default.js")).default();
   }
 
   openapiVendorMap.set(vendor, vendorFn);

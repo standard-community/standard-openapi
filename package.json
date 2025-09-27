@@ -53,34 +53,15 @@
         "types": "./dist/vendors/convert.d.cts",
         "default": "./dist/vendors/convert.cjs"
       }
-    },
-    "./valibot": {
-      "import": {
-        "types": "./dist/vendors/valibot.d.ts",
-        "default": "./dist/vendors/valibot.js"
-      },
-      "require": {
-        "types": "./dist/vendors/valibot.d.cts",
-        "default": "./dist/vendors/valibot.cjs"
-      }
-    },
-    "./zod": {
-      "import": {
-        "types": "./dist/vendors/zod.d.ts",
-        "default": "./dist/vendors/zod.js"
-      },
-      "require": {
-        "types": "./dist/vendors/zod.d.cts",
-        "default": "./dist/vendors/zod.cjs"
-      }
     }
   },
   "peerDependencies": {
-    "@standard-community/standard-json": "^0.3.4",
+    "@standard-community/standard-json": "^0.3.5",
     "@standard-schema/spec": "^1.0.0",
     "arktype": "^2.1.20",
     "effect": "^3.17.14",
     "openapi-types": "^12.1.3",
+    "sury": "^10.0.0",
     "typebox": "^1.0.0",
     "valibot": "^1.1.0",
     "zod": "^3.25.0 || ^4.0.0",
@@ -91,6 +72,9 @@
       "optional": true
     },
     "effect": {
+      "optional": true
+    },
+    "sury": {
       "optional": true
     },
     "typebox": {
