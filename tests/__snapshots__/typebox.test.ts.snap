@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`typebox > basic 1`] = `
+{
+  "components": undefined,
+  "schema": {
+    "description": "My neat object schema",
+    "properties": {
+      "myString": {
+        "type": "string",
+      },
+      "myUnion": {
+        "anyOf": [
+          {
+            "type": "number",
+          },
+          {
+            "type": "boolean",
+          },
+        ],
+      },
+    },
+    "required": [
+      "myString",
+      "myUnion",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`typebox > with metadata 1`] = `
+{
+  "components": {
+    "schemas": {
+      "MyNeatObjectSchema": {
+        "description": "My neat object schema",
+        "properties": {
+          "myString": {
+            "type": "string",
+          },
+          "myUnion": {
+            "anyOf": [
+              {
+                "type": "number",
+              },
+              {
+                "type": "boolean",
+              },
+            ],
+          },
+        },
+        "required": [
+          "myString",
+          "myUnion",
+        ],
+        "type": "object",
+      },
+    },
+  },
+  "schema": {
+    "$ref": "#/components/schemas/MyNeatObjectSchema",
+  },
+}
+`;

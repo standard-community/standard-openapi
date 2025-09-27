@@ -23,6 +23,7 @@ export const getToOpenAPISchemaFn = async (
       break;
     case "arktype":
     case "effect":
+    case "typebox":
       vendorFn = (await import("./default.js")).default();
       break;
     default:

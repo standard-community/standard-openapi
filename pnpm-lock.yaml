@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@standard-community/standard-json':
-        specifier: ^0.3.1
-        version: 0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
+        specifier: ^0.3.4
+        version: 0.3.4(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(typebox@1.0.17)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
@@ -23,6 +23,9 @@ importers:
       openapi-types:
         specifier: ^12.1.3
         version: 12.1.3
+      typebox:
+        specifier: ^1.0.0
+        version: 1.0.17
       valibot:
         specifier: ^1.1.0
         version: 1.1.0(typescript@5.8.3)
@@ -915,8 +918,8 @@ packages:
       zod-to-json-schema:
         optional: true
 
-  '@standard-community/standard-json@0.3.1':
-    resolution: {integrity: sha512-QYW1sZWWheij2CZnUL8LAFK5oECJe7cQUqtao1dY4Pjp/RPidOmpgS4L3pm9rR2gzFoyjpS5Q0MhF3c0Bxzevg==}
+  '@standard-community/standard-json@0.3.4':
+    resolution: {integrity: sha512-af2svLdpIlE5ad3DHkvUBgdmpoFHbaWT1MStHpriQnACMV/TmRP6TGcuNGIOdd+EfvDwDnptSJAFPswJl6gVPQ==}
     peerDependencies:
       '@standard-schema/spec': ^1.0.0
       '@types/json-schema': ^7.0.15
@@ -924,6 +927,7 @@ packages:
       arktype: ^2.1.20
       effect: ^3.16.8
       quansync: ^0.2.11
+      typebox: ^1.0.17
       valibot: ^1.1.0
       zod: ^3.25.0 || ^4.0.0
       zod-to-json-schema: ^3.24.5
@@ -933,6 +937,8 @@ packages:
       arktype:
         optional: true
       effect:
+        optional: true
+      typebox:
         optional: true
       valibot:
         optional: true
@@ -1322,6 +1328,9 @@ packages:
   to-regex-range@5.0.1:
     resolution: {integrity: sha512-65P7iz6X5yEr1cwcgvQxbbIw7Uk3gOy5dIdtZ4rDveLqhrdJP+Li/Hx6tyK0NEb+2GCyneCMJiGqrADCSNk8sQ==}
     engines: {node: '>=8.0'}
+
+  typebox@1.0.17:
+    resolution: {integrity: sha512-8ymzEBwFaubUQGS7Mn+amGYtCERCeWNvdPNtbBjR3dQaDmnOEHSSPDLv4L7qGF9dQtBQek/EV0evs2vg62Cs2Q==}
 
   typescript@5.8.2:
     resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
@@ -1980,7 +1989,7 @@ snapshots:
     optionalDependencies:
       arktype: 2.1.9
 
-  '@standard-community/standard-json@0.3.1(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
+  '@standard-community/standard-json@0.3.4(@standard-schema/spec@1.0.0)(@types/json-schema@7.0.15)(@valibot/to-json-schema@1.3.0(valibot@1.1.0(typescript@5.8.3)))(arktype@2.1.20)(effect@3.17.14)(quansync@0.2.11)(typebox@1.0.17)(valibot@1.1.0(typescript@5.8.3))(zod-to-json-schema@3.24.6(zod@3.25.67))(zod@3.25.67)':
     dependencies:
       '@standard-schema/spec': 1.0.0
       '@types/json-schema': 7.0.15
@@ -1989,6 +1998,7 @@ snapshots:
       '@valibot/to-json-schema': 1.3.0(valibot@1.1.0(typescript@5.8.3))
       arktype: 2.1.20
       effect: 3.17.14
+      typebox: 1.0.17
       valibot: 1.1.0(typescript@5.8.3)
       zod: 3.25.67
       zod-to-json-schema: 3.24.6(zod@3.25.67)
@@ -2450,6 +2460,8 @@ snapshots:
   to-regex-range@5.0.1:
     dependencies:
       is-number: 7.0.0
+
+  typebox@1.0.17: {}
 
   typescript@5.8.2:
     optional: true

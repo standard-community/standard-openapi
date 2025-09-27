@@ -94,15 +94,17 @@ export function convertToOpenAPISchema(
   });
 
   // If a ref is provided, use it to create a $ref in the OpenAPI components
-  if (_jsonSchema.ref) {
-    const { ref, ...component } = _jsonSchema;
+  if (_jsonSchema.ref || _jsonSchema.$id) {
+    const { ref, $id, ...component } = _jsonSchema;
+
+    const id = ref || $id;
 
     context.components.schemas = {
       ...context.components.schemas,
-      [ref]: component,
+      [id]: component,
     };
     return {
-      $ref: `#/components/schemas/${ref}`,
+      $ref: `#/components/schemas/${id}`,
     };
   } else if (_jsonSchema.$ref) {
     // Happens in effect schemas
