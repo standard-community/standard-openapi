@@ -4,7 +4,7 @@ import type { ToOpenAPISchemaContext } from "./utils.js";
 
 export function convertToOpenAPISchema(
   jsonSchema: JSONSchema7,
-  context: ToOpenAPISchemaContext,
+  context: ToOpenAPISchemaContext
 ): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject {
   const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
 
@@ -72,19 +72,19 @@ export function convertToOpenAPISchema(
         for (const subKey in _jsonSchema[key]) {
           _jsonSchema[key][subKey] = convertToOpenAPISchema(
             _jsonSchema[key][subKey],
-            context,
+            context
           );
         }
       } else if (key === "allOf" || key === "anyOf" || key === "oneOf") {
         // These are arrays of schemas
         _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-          convertToOpenAPISchema(item, context),
+          convertToOpenAPISchema(item, context)
         );
       } else if (key === "items") {
         // Items can be a schema or array of schemas
         if (Array.isArray(_jsonSchema[key])) {
           _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-            convertToOpenAPISchema(item, context),
+            convertToOpenAPISchema(item, context)
           );
         } else {
           _jsonSchema[key] = convertToOpenAPISchema(_jsonSchema[key], context);
@@ -114,14 +114,14 @@ export function convertToOpenAPISchema(
     const { $ref, $defs } = _jsonSchema;
 
     // Remove the '#/$defs/' prefix from Effect's internal references
-    const EFFECT_DEFS_PREFIX = "#/$defs/";
+    const ref = $ref.split("/").pop();
 
     context.components.schemas = {
       ...context.components.schemas,
       ...$defs,
     };
     return {
-      $ref: `#/components/schemas/${$ref.slice(EFFECT_DEFS_PREFIX.length)}`,
+      $ref: `#/components/schemas/${ref}`,
     };
   }
 
