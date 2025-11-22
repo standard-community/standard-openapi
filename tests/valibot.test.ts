@@ -20,7 +20,7 @@ describe("valibot", () => {
         myString: v.string(),
         myUnion: v.union([v.number(), v.boolean()]),
       }),
-      v.description("My neat object schema"),
+      v.description("My neat object schema")
     );
 
     const specs = await toOpenAPISchema(schema);
@@ -36,10 +36,33 @@ describe("valibot", () => {
       v.description("My neat object schema"),
       v.metadata({
         ref: "MyNeatObjectSchema",
-      }),
+      })
     );
 
     const specs = await toOpenAPISchema(schema);
+    expect(specs).toMatchSnapshot();
+  });
+
+  it("with nested metadata", async () => {
+    const userSchema = v.pipe(
+      v.object({
+        id: v.string(),
+      }),
+      v.metadata({
+        ref: "UserSchema",
+      })
+    );
+
+    const responseSchema = v.pipe(
+      v.object({
+        user: userSchema,
+      }),
+      v.metadata({
+        ref: "ResponseSchema",
+      })
+    );
+
+    const specs = await toOpenAPISchema(responseSchema);
     expect(specs).toMatchSnapshot();
   });
 });

@@ -91,3 +91,37 @@ exports[`valibot > with metadata 1`] = `
   },
 }
 `;
+
+exports[`valibot > with nested metadata 1`] = `
+{
+  "components": {
+    "schemas": {
+      "ResponseSchema": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/UserSchema",
+          },
+        },
+        "required": [
+          "user",
+        ],
+        "type": "object",
+      },
+      "UserSchema": {
+        "properties": {
+          "id": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+        ],
+        "type": "object",
+      },
+    },
+  },
+  "schema": {
+    "$ref": "#/components/schemas/ResponseSchema",
+  },
+}
+`;
