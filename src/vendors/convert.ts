@@ -132,11 +132,20 @@ export function convertToOpenAPISchema(
       $ref: `#/components/schemas/${id}`,
     };
   } else if (_jsonSchema.$ref) {
-    // Happens in effect schemas — the referenced definitions were already
-    // hoisted from `$defs` above, so we only need to rewrite the pointer.
-    const { $ref } = _jsonSchema;
+    // The referenced definitions were already hoisted from `$defs` above.
+    const { $ref, ...rest } = _jsonSchema;
 
-    // Remove the '#/$defs/' prefix from Effect's internal references
+    // Preserve external URLs as-is.
+    const lowerRef = $ref.toLowerCase();
+    if (
+      lowerRef.startsWith("http://") ||
+      lowerRef.startsWith("https://") ||
+      $ref.startsWith("//")
+    ) {
+      return { ...rest, $ref };
+    }
+
+    // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs
     const ref = $ref.split("/").pop();
 
     return {
