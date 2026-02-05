@@ -135,7 +135,7 @@ export function convertToOpenAPISchema(
     // The referenced definitions were already hoisted from `$defs` above.
     const { $ref, ...rest } = _jsonSchema;
 
-    // Preserve external URLs as-is.
+    // Preserve external URLs (http/https) and protocol-relative URLs as-is
     const lowerRef = $ref.toLowerCase();
     if (
       lowerRef.startsWith("http://") ||
