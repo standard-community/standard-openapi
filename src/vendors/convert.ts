@@ -96,6 +96,28 @@ export function convertToOpenAPISchema(
     }
   });
 
+  // Hoist any leftover `$defs`/`definitions` into the shared components and
+  // strip them from the node. Some vendors (e.g. Effect Schema) emit a
+  // top-level `$defs` map alongside a container schema (`array`, `object`,
+  // `anyOf`, ...) even after their inner `$ref`s have been rewritten to
+  // `#/components/schemas/*`. Without this, the definitions would stay
+  // duplicated inline on the returned schema while `components.schemas` never
+  // receives them.
+  //
+  // Existing components win over the lifted defs: when a schema is
+  // `ref`/`$id`-annotated the vendor already registered the real definition
+  // and only leaves a self-referential `{ $ref }` stub inside `$defs`.
+  if (_jsonSchema.$defs || _jsonSchema.definitions) {
+    context.components.schemas = {
+      ..._jsonSchema.definitions,
+      ..._jsonSchema.$defs,
+      ...context.components.schemas,
+    };
+
+    delete _jsonSchema.$defs;
+    delete _jsonSchema.definitions;
+  }
+
   // If a ref is provided, use it to create a $ref in the OpenAPI components
   if (_jsonSchema.ref || _jsonSchema.$id) {
     const { ref, $id, ...component } = _jsonSchema;
@@ -110,16 +132,13 @@ export function convertToOpenAPISchema(
       $ref: `#/components/schemas/${id}`,
     };
   } else if (_jsonSchema.$ref) {
-    // Happens in effect schemas
-    const { $ref, $defs } = _jsonSchema;
+    // Happens in effect schemas — the referenced definitions were already
+    // hoisted from `$defs` above, so we only need to rewrite the pointer.
+    const { $ref } = _jsonSchema;
 
     // Remove the '#/$defs/' prefix from Effect's internal references
     const ref = $ref.split("/").pop();
 
-    context.components.schemas = {
-      ...context.components.schemas,
-      ...$defs,
-    };
     return {
       $ref: `#/components/schemas/${ref}`,
     };
