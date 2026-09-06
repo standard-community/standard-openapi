@@ -30,4 +30,17 @@ describe("zod v4", () => {
     const specs = await toOpenAPISchema(schema);
     expect(specs).toMatchSnapshot();
   });
+
+  it("preserves external $ref URLs", async () => {
+    const schema = z
+      .object({
+        model: z.string().meta({
+          $ref: "https://models.dev/model-schema.json#/$defs/Model",
+        }),
+      })
+      .describe("Schema with external ref");
+
+    const specs = await toOpenAPISchema(schema);
+    expect(specs).toMatchSnapshot();
+  });
 });

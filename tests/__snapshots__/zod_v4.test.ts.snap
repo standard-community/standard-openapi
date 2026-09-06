@@ -29,6 +29,25 @@ exports[`zod v4 > basic 1`] = `
 }
 `;
 
+exports[`zod v4 > preserves external $ref URLs 1`] = `
+{
+  "components": undefined,
+  "schema": {
+    "description": "Schema with external ref",
+    "properties": {
+      "model": {
+        "$ref": "https://models.dev/model-schema.json#/$defs/Model",
+        "type": "string",
+      },
+    },
+    "required": [
+      "model",
+    ],
+    "type": "object",
+  },
+}
+`;
+
 exports[`zod v4 > with metadata 1`] = `
 {
   "components": {
