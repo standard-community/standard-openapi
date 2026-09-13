@@ -18,12 +18,33 @@ For some specific vendor, install the respective package also -
 
 | Vendor  | Package |
 | ------- | ------- |
+| Zod v4  | No additional package required |
 | Zod v3  | `zod-openapi@4` |
 | Valibot | `@valibot/to-json-schema` |
+
+### Zod
+
+Zod v4 uses its built-in JSON Schema conversion, so it works without
+`zod-openapi`. To generate a reusable OpenAPI component, attach a `ref` with
+Zod metadata:
+
+```ts
+import z from "zod/v4";
+
+const user = z.object({ id: z.string() }).meta({ ref: "User" });
+const result = await toOpenAPISchema(user);
+
+// result.schema is { $ref: "#/components/schemas/User" }
+// result.components.schemas.User contains the object schema
+```
+
+Zod v3 requires `zod-openapi@4`; import `zod-openapi/extend` before using its
+`.openapi()` metadata method.
 
 ## Usage
 
 ```ts
+import * as v from "valibot";
 import { toOpenAPISchema } from "@standard-community/standard-openapi";
 
 // Define your schema
