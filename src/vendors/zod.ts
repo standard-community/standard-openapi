@@ -14,27 +14,26 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
       });
     }
 
-    try {
-      const { createSchema } = await import("zod-openapi");
-      const { schema: _schema, components } = createSchema(
-        // @ts-expect-error
-        schema,
-        { schemaType: "input", ...context.options },
-      );
-
-      if (components) {
-        // @ts-expect-error
-        context.components.schemas = {
-          ...context.components.schemas,
-          ...components,
-        };
-      }
-
-      return _schema as OpenAPIV3_1.SchemaObject;
-    } catch {
+    const { createSchema } = await import("zod-openapi").catch(() => {
       throw new Error(
         errorMessageWrapper(`Missing dependencies "zod-openapi v4".`),
       );
+    });
+
+    const { schema: _schema, components } = createSchema(
+      // @ts-expect-error
+      schema,
+      { schemaType: "input", ...context.options },
+    );
+
+    if (components) {
+      // @ts-expect-error
+      context.components.schemas = {
+        ...context.components.schemas,
+        ...components,
+      };
     }
+
+    return _schema as OpenAPIV3_1.SchemaObject;
   };
 }

@@ -31,4 +31,13 @@ describe("zod v3", () => {
     const specs = await toOpenAPISchema(schema);
     expect(specs).toMatchSnapshot();
   });
+
+  it("reports zod-openapi's own error", async () => {
+    const schema = z.object({
+      first: z.object({ a: z.string() }).openapi({ ref: "Shared" }),
+      second: z.object({ b: z.number() }).openapi({ ref: "Shared" }),
+    });
+
+    await expect(toOpenAPISchema(schema)).rejects.toThrow(/Shared/);
+  });
 });
