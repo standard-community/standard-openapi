@@ -73,6 +73,111 @@ describe("zod v4", () => {
     expect(components?.schemas?.Person).not.toHaveProperty("description");
   });
 
+  describe("a description on a schema named with `ref`", () => {
+    it("stays beside each field that gives its own", async () => {
+      const Person = z.object({ name: z.string() }).meta({ ref: "Person" });
+      const Folder = z.object({
+        owner: Person.describe("Who owns the folder"),
+        editor: Person.describe("Who last edited the folder"),
+        viewer: Person,
+      });
+
+      const { schema, components } = await toOpenAPISchema(Folder);
+
+      expect(schema).toMatchObject({
+        properties: {
+          owner: {
+            $ref: "#/components/schemas/Person",
+            description: "Who owns the folder",
+          },
+          editor: {
+            $ref: "#/components/schemas/Person",
+            description: "Who last edited the folder",
+          },
+          viewer: { $ref: "#/components/schemas/Person" },
+        },
+      });
+      expect(
+        (schema as { properties: Record<string, object> }).properties.viewer,
+      ).toEqual({ $ref: "#/components/schemas/Person" });
+      expect(components?.schemas?.Person).not.toHaveProperty("description");
+    });
+
+    it("stays on the component when every use agrees on it", async () => {
+      const Person = z
+        .object({ name: z.string() })
+        .meta({ description: "Someone with access", ref: "Person" });
+
+      const { schema, components } = await toOpenAPISchema(
+        z.object({ editor: Person, owner: Person }),
+      );
+
+      expect(schema).toMatchObject({
+        properties: {
+          editor: { $ref: "#/components/schemas/Person" },
+          owner: { $ref: "#/components/schemas/Person" },
+        },
+      });
+      expect(components?.schemas?.Person).toMatchObject({
+        description: "Someone with access",
+      });
+    });
+
+    it("moves beside a reference converted before a use that disagrees", async () => {
+      const Person = z.object({ name: z.string() }).meta({ ref: "Person" });
+
+      const { schema, components } = await toOpenAPISchema(
+        z.object({
+          owner: Person.describe("Who owns the folder"),
+          viewer: Person,
+        }),
+      );
+
+      expect(schema).toMatchObject({
+        properties: {
+          owner: {
+            $ref: "#/components/schemas/Person",
+            description: "Who owns the folder",
+          },
+          viewer: { $ref: "#/components/schemas/Person" },
+        },
+      });
+      expect(components?.schemas?.Person).not.toHaveProperty("description");
+    });
+
+    it("moves beside a reference from an earlier conversion sharing the components", async () => {
+      const Person = z.object({ name: z.string() }).meta({ ref: "Person" });
+      const components = {};
+
+      const { schema: owned } = await toOpenAPISchema(
+        z.object({ owner: Person.describe("Who owns the folder") }),
+        { components },
+      );
+      const { schema: edited } = await toOpenAPISchema(
+        z.object({ editor: Person.describe("Who last edited the folder") }),
+        { components },
+      );
+
+      expect(owned).toMatchObject({
+        properties: {
+          owner: {
+            $ref: "#/components/schemas/Person",
+            description: "Who owns the folder",
+          },
+        },
+      });
+      expect(edited).toMatchObject({
+        properties: {
+          editor: {
+            $ref: "#/components/schemas/Person",
+            description: "Who last edited the folder",
+          },
+        },
+      });
+      expect(components).not.toHaveProperty("schemas.Person.description");
+    });
+  });
+
   describe("recursive schemas", () => {
     const refsIn = (value: unknown): string[] => {
       if (Array.isArray(value)) {

@@ -43,6 +43,74 @@ const componentName = ($ref: string, { names, root }: SchemaDocument) => {
   return $ref.split("/").pop();
 };
 
+/**
+ * How a named schema has been described so far, per components object.
+ *
+ * Vendors copy a schema's metadata, its name included, onto the copy that a
+ * field describes, so a named schema arrives with either its own description
+ * or the field's, and nothing tells the two apart. While every use agrees, the
+ * description is taken to be the schema's own. Once two uses differ, each
+ * description belongs to the field that gave it, so it moves beside that
+ * field's reference, and the component keeps none.
+ */
+type Uses = {
+  description?: string;
+  /** The references returned while the description looked like the schema's. */
+  references: OpenAPIV3_1.ReferenceObject[];
+  shared: boolean;
+};
+
+const usesByComponents = new WeakMap<
+  OpenAPIV3_1.ComponentsObject,
+  Map<string, Uses>
+>();
+
+const register = (
+  id: string,
+  schema: OpenAPIV3_1.SchemaObject,
+  { components }: ToOpenAPISchemaContext,
+): OpenAPIV3_1.ReferenceObject => {
+  const uses = usesByComponents.get(components) ?? new Map<string, Uses>();
+  usesByComponents.set(components, uses);
+
+  const { description, ...undescribed } = schema;
+  const previous = uses.get(id);
+  const shared =
+    !previous || (previous.shared && previous.description === description);
+
+  // The references returned before the uses disagreed went out without a
+  // description, as it looked like the schema's own, so they get it now.
+  if (previous?.shared && !shared && previous.description !== undefined) {
+    previous.references.forEach((reference) => {
+      reference.description = previous.description;
+    });
+  }
+
+  const reference: OpenAPIV3_1.ReferenceObject = {
+    $ref: `#/components/schemas/${id}`,
+    ...(!shared && description !== undefined ? { description } : {}),
+  };
+
+  // A schema can be used many times, so its references are collected in place
+  // rather than copied on every use.
+  if (shared && previous) {
+    previous.references.push(reference);
+  } else {
+    uses.set(id, {
+      description,
+      references: shared ? [reference] : [],
+      shared,
+    });
+  }
+
+  components.schemas = {
+    ...components.schemas,
+    [id]: shared ? schema : undescribed,
+  };
+
+  return reference;
+};
+
 export const convertToOpenAPISchema = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
@@ -189,15 +257,7 @@ const convert = (
   if (_jsonSchema.ref || _jsonSchema.$id) {
     const { ref, $id, ...component } = _jsonSchema;
 
-    const id = ref || $id;
-
-    context.components.schemas = {
-      ...context.components.schemas,
-      [id]: component,
-    };
-    return {
-      $ref: `#/components/schemas/${id}`,
-    };
+    return register(ref || $id, component, context);
   } else if (_jsonSchema.$ref) {
     // The referenced definitions were already hoisted from `$defs` above.
     const { $ref, ...rest } = _jsonSchema;
