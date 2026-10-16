@@ -33,7 +33,9 @@ const componentName = ($ref: string, { names, root }: SchemaDocument) => {
     return root;
   }
 
-  const key = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
+  const token = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
+  // A JSON Pointer token escapes `/` as `~1` and `~` as `~0`, in that order.
+  const key = token?.replaceAll("~1", "/").replaceAll("~0", "~");
   if (key && Object.hasOwn(names, key)) {
     return names[key];
   }
