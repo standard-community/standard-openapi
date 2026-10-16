@@ -176,6 +176,39 @@ describe("zod v4", () => {
       });
       expect(components).not.toHaveProperty("schemas.Person.description");
     });
+    it("moves beside a bare reference to a recursive schema", async () => {
+      const Person: z.ZodType<unknown> = z
+        .object({
+          name: z.string(),
+          get friend() {
+            return Person.optional();
+          },
+        })
+        .meta({ description: "A person", ref: "Person" });
+
+      const { schema, components } = await toOpenAPISchema(
+        z.object({ base: Person, owner: Person.describe("Owner") }),
+      );
+
+      expect(schema).toMatchObject({
+        properties: {
+          base: {
+            $ref: "#/components/schemas/Person",
+            description: "A person",
+          },
+          owner: { $ref: "#/components/schemas/Person", description: "Owner" },
+        },
+      });
+      expect(components?.schemas?.Person).toMatchObject({
+        properties: {
+          friend: {
+            $ref: "#/components/schemas/Person",
+            description: "A person",
+          },
+        },
+      });
+      expect(components?.schemas?.Person).not.toHaveProperty("description");
+    });
   });
 
   describe("recursive schemas", () => {

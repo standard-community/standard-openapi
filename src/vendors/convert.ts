@@ -11,36 +11,47 @@ type SchemaDocument = {
   root?: string;
   /** The component name of each `$defs`/`definitions` entry that has one. */
   names: Record<string, string>;
+  /** The description each named schema gives itself, by component name. */
+  descriptions: Record<string, string>;
 };
 
 const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
   const { $defs, $id, definitions, ref } = jsonSchema as Record<string, any>;
 
-  const names = Object.fromEntries(
-    Object.entries<any>({ ...definitions, ...$defs }).flatMap(
-      ([key, entry]) => {
-        const name = entry?.ref ?? entry?.$id;
-        return typeof name === "string" ? [[key, name]] : [];
-      },
+  const named = Object.entries<any>({ ...definitions, ...$defs }).flatMap(
+    ([key, entry]) => {
+      const name = entry?.ref ?? entry?.$id;
+      return typeof name === "string" ? [{ entry, key, name }] : [];
+    },
+  );
+  const root = ref ?? $id;
+
+  const descriptions = Object.fromEntries(
+    [...named, ...(root ? [{ entry: jsonSchema, name: root }] : [])].flatMap(
+      ({ entry, name }) =>
+        typeof entry?.description === "string"
+          ? [[name, entry.description]]
+          : [],
     ),
   );
 
-  return { names, root: ref ?? $id };
+  return {
+    descriptions,
+    names: Object.fromEntries(named.map(({ key, name }) => [key, name])),
+    root,
+  };
 };
 
-const componentName = ($ref: string, { names, root }: SchemaDocument) => {
-  if ($ref === "#" && root) {
+/** The component a local `$ref` points at, when it's a named schema. */
+const namedComponent = ($ref: string, { names, root }: SchemaDocument) => {
+  if ($ref === "#") {
     return root;
   }
 
   const token = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
   // A JSON Pointer token escapes `/` as `~1` and `~` as `~0`, in that order.
   const key = token?.replaceAll("~1", "/").replaceAll("~0", "~");
-  if (key && Object.hasOwn(names, key)) {
-    return names[key];
-  }
-
-  return $ref.split("/").pop();
+  return key && Object.hasOwn(names, key) ? names[key] : undefined;
 };
 
 /**
@@ -65,28 +76,44 @@ const usesByComponents = new WeakMap<
   Map<string, Uses>
 >();
 
-const register = (
+/**
+ * Records a use of the named schema `id` with the description it carries, and
+ * returns the reference for it, beside any `siblings`: without the description
+ * while every use agrees, and with it once they don't.
+ */
+const use = (
   id: string,
-  schema: OpenAPIV3_1.SchemaObject,
-  { components }: ToOpenAPISchemaContext,
-): OpenAPIV3_1.ReferenceObject => {
+  description: string | undefined,
+  components: OpenAPIV3_1.ComponentsObject,
+  siblings: Record<string, unknown> = {},
+) => {
   const uses = usesByComponents.get(components) ?? new Map<string, Uses>();
   usesByComponents.set(components, uses);
 
-  const { description, ...undescribed } = schema;
   const previous = uses.get(id);
   const shared =
     !previous || (previous.shared && previous.description === description);
 
   // The references returned before the uses disagreed went out without a
-  // description, as it looked like the schema's own, so they get it now.
-  if (previous?.shared && !shared && previous.description !== undefined) {
-    previous.references.forEach((reference) => {
-      reference.description = previous.description;
-    });
+  // description, as it looked like the schema's own, so they get it now, and
+  // the component, which was given it, no longer has it.
+  if (previous?.shared && !shared) {
+    if (previous.description !== undefined) {
+      previous.references.forEach((reference) => {
+        reference.description = previous.description;
+      });
+    }
+
+    const current = components.schemas?.[id];
+    if (current) {
+      const { description: _, ...undescribed } =
+        current as OpenAPIV3_1.SchemaObject;
+      components.schemas = { ...components.schemas, [id]: undescribed };
+    }
   }
 
   const reference: OpenAPIV3_1.ReferenceObject = {
+    ...siblings,
     $ref: `#/components/schemas/${id}`,
     ...(!shared && description !== undefined ? { description } : {}),
   };
@@ -102,6 +129,17 @@ const register = (
       shared,
     });
   }
+
+  return { reference, shared };
+};
+
+const register = (
+  id: string,
+  schema: OpenAPIV3_1.SchemaObject,
+  { components }: ToOpenAPISchemaContext,
+): OpenAPIV3_1.ReferenceObject => {
+  const { description, ...undescribed } = schema;
+  const { reference, shared } = use(id, description, components);
 
   components.schemas = {
     ...components.schemas,
@@ -275,11 +313,18 @@ const convert = (
     // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs.
     // Keywords beside the reference, such as the description a field gives the
     // schema it refers to, belong to that use of it, so they stay beside it.
-    const ref = componentName($ref, document);
+    const named = namedComponent($ref, document);
+
+    // A bare reference to a named schema uses it as it describes itself, which
+    // counts towards whether that description is the schema's own.
+    if (named && rest.description === undefined) {
+      return use(named, document.descriptions[named], context.components, rest)
+        .reference;
+    }
 
     return {
       ...rest,
-      $ref: `#/components/schemas/${ref}`,
+      $ref: `#/components/schemas/${named ?? $ref.split("/").pop()}`,
     };
   }
 
