@@ -2,10 +2,56 @@ import type { JSONSchema7 } from "json-schema";
 import type { OpenAPIV3_1 } from "openapi-types";
 import type { ToOpenAPISchemaContext } from "./utils.js";
 
-export function convertToOpenAPISchema(
+/**
+ * What a local `$ref` in a converted schema can point at: `#` is the root
+ * schema, and `#/$defs/<key>` an entry that may be a named schema.
+ */
+type SchemaDocument = {
+  /** The component name of the root schema, when it has one. */
+  root?: string;
+  /** The component name of each `$defs`/`definitions` entry that has one. */
+  names: Record<string, string>;
+};
+
+const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
+  const { $defs, $id, definitions, ref } = jsonSchema as Record<string, any>;
+
+  const names = Object.fromEntries(
+    Object.entries<any>({ ...definitions, ...$defs }).flatMap(
+      ([key, entry]) => {
+        const name = entry?.ref ?? entry?.$id;
+        return typeof name === "string" ? [[key, name]] : [];
+      },
+    ),
+  );
+
+  return { names, root: ref ?? $id };
+};
+
+const componentName = ($ref: string, { names, root }: SchemaDocument) => {
+  if ($ref === "#" && root) {
+    return root;
+  }
+
+  const key = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
+  if (key && Object.hasOwn(names, key)) {
+    return names[key];
+  }
+
+  return $ref.split("/").pop();
+};
+
+export const convertToOpenAPISchema = (
   jsonSchema: JSONSchema7,
-  context: ToOpenAPISchemaContext
-): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject {
+  context: ToOpenAPISchemaContext,
+): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject =>
+  convert(jsonSchema, context, describeDocument(jsonSchema));
+
+const convert = (
+  jsonSchema: JSONSchema7,
+  context: ToOpenAPISchemaContext,
+  document: SchemaDocument,
+): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject => {
   const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
 
   // Handle nullable property conversion
@@ -70,28 +116,29 @@ export function convertToOpenAPISchema(
       ) {
         // These are objects containing schemas
         for (const subKey in _jsonSchema[key]) {
-          _jsonSchema[key][subKey] = convertToOpenAPISchema(
+          _jsonSchema[key][subKey] = convert(
             _jsonSchema[key][subKey],
-            context
+            context,
+            document,
           );
         }
       } else if (key === "allOf" || key === "anyOf" || key === "oneOf") {
         // These are arrays of schemas
         _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-          convertToOpenAPISchema(item, context)
+          convert(item, context, document),
         );
       } else if (key === "items") {
         // Items can be a schema or array of schemas
         if (Array.isArray(_jsonSchema[key])) {
           _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-            convertToOpenAPISchema(item, context)
+            convert(item, context, document),
           );
         } else {
-          _jsonSchema[key] = convertToOpenAPISchema(_jsonSchema[key], context);
+          _jsonSchema[key] = convert(_jsonSchema[key], context, document);
         }
       } else {
         // Single schema properties
-        _jsonSchema[key] = convertToOpenAPISchema(_jsonSchema[key], context);
+        _jsonSchema[key] = convert(_jsonSchema[key], context, document);
       }
     }
   });
@@ -104,13 +151,17 @@ export function convertToOpenAPISchema(
   // duplicated inline on the returned schema while `components.schemas` never
   // receives them.
   //
-  // Existing components win over the lifted defs: when a schema is
-  // `ref`/`$id`-annotated the vendor already registered the real definition
-  // and only leaves a self-referential `{ $ref }` stub inside `$defs`.
+  // An entry that is a named schema was registered under its own name while
+  // converting it, and references to its key point at that name, so only its
+  // `{ $ref }` stub is left here, and it isn't lifted.
   if (_jsonSchema.$defs || _jsonSchema.definitions) {
-    context.components.schemas = {
+    const lifted = Object.entries<OpenAPIV3_1.SchemaObject>({
       ..._jsonSchema.definitions,
       ..._jsonSchema.$defs,
+    }).filter(([key]) => !Object.hasOwn(document.names, key));
+
+    context.components.schemas = {
+      ...Object.fromEntries(lifted),
       ...context.components.schemas,
     };
 
@@ -148,7 +199,7 @@ export function convertToOpenAPISchema(
     // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs.
     // Keywords beside the reference, such as the description a field gives the
     // schema it refers to, belong to that use of it, so they stay beside it.
-    const ref = $ref.split("/").pop();
+    const ref = componentName($ref, document);
 
     return {
       ...rest,
@@ -157,4 +208,4 @@ export function convertToOpenAPISchema(
   }
 
   return _jsonSchema;
-}
+};

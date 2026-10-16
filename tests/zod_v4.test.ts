@@ -72,4 +72,99 @@ describe("zod v4", () => {
     ).toEqual({ $ref: "#/components/schemas/Person" });
     expect(components?.schemas?.Person).not.toHaveProperty("description");
   });
+
+  describe("recursive schemas", () => {
+    const refsIn = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.flatMap(refsIn);
+      }
+      if (value === null || typeof value !== "object") {
+        return [];
+      }
+      return Object.entries(value).flatMap(([key, item]) =>
+        key === "$ref" && typeof item === "string" ? [item] : refsIn(item),
+      );
+    };
+
+    it("points a schema that refers to itself at its own component", async () => {
+      const Folder: z.ZodType<unknown> = z
+        .object({
+          name: z.string(),
+          get parent() {
+            return Folder.optional();
+          },
+        })
+        .meta({ ref: "Folder" });
+
+      const { schema, components } = await toOpenAPISchema(Folder);
+
+      expect(schema).toEqual({ $ref: "#/components/schemas/Folder" });
+      expect(Object.keys(components?.schemas ?? {})).toEqual(["Folder"]);
+      expect(components?.schemas?.Folder).toMatchObject({
+        properties: { parent: { $ref: "#/components/schemas/Folder" } },
+      });
+    });
+
+    it("resolves a recursive union through z.lazy()", async () => {
+      const Condition = z
+        .object({ field: z.string() })
+        .meta({ ref: "Condition" });
+      const ConditionGroup: z.ZodType<unknown> = z
+        .object({
+          operator: z.enum(["AND", "OR"]),
+          conditions: z.array(
+            z.lazy(() => z.union([Condition, ConditionGroup])),
+          ),
+        })
+        .meta({ ref: "ConditionGroup" });
+
+      const { components } = await toOpenAPISchema(ConditionGroup);
+
+      expect(refsIn(components)).toEqual([
+        "#/components/schemas/Condition",
+        "#/components/schemas/ConditionGroup",
+      ]);
+    });
+
+    it("points `#` at the root schema, not the nearest named one", async () => {
+      const Owner: z.ZodType<unknown> = z
+        .object({
+          name: z.string(),
+          get folder() {
+            return Folder.optional();
+          },
+        })
+        .meta({ ref: "Owner" });
+      const Folder: z.ZodType<unknown> = z
+        .object({ owner: Owner })
+        .meta({ ref: "Folder" });
+
+      const { components } = await toOpenAPISchema(Folder);
+
+      expect(components?.schemas?.Owner).toMatchObject({
+        properties: { folder: { $ref: "#/components/schemas/Folder" } },
+      });
+    });
+
+    it("names a recursive schema nested in another by its own name", async () => {
+      const Folder: z.ZodType<unknown> = z
+        .object({
+          name: z.string(),
+          get parent() {
+            return Folder.optional();
+          },
+        })
+        .meta({ ref: "Folder" });
+
+      const { schema, components } = await toOpenAPISchema(
+        z.object({ root: Folder }),
+      );
+
+      expect(Object.keys(components?.schemas ?? {})).toEqual(["Folder"]);
+      expect(refsIn({ schema, components })).toEqual([
+        "#/components/schemas/Folder",
+        "#/components/schemas/Folder",
+      ]);
+    });
+  });
 });
