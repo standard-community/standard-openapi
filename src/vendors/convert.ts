@@ -40,6 +40,7 @@ export function convertToOpenAPISchema(
     "properties",
     "additionalProperties",
     "items",
+    "prefixItems",
     "additionalItems",
     "allOf",
     "anyOf",
@@ -51,10 +52,11 @@ export function convertToOpenAPISchema(
     "definitions",
     "$defs",
     "patternProperties",
+    "dependentSchemas",
     "propertyNames",
     "contains",
-    // "unevaluatedProperties",
-    // "unevaluatedItems",
+    "unevaluatedProperties",
+    "unevaluatedItems",
   ] as const;
 
   nestedSchemaKeys.forEach((key) => {
@@ -66,7 +68,8 @@ export function convertToOpenAPISchema(
         key === "properties" ||
         key === "definitions" ||
         key === "$defs" ||
-        key === "patternProperties"
+        key === "patternProperties" ||
+        key === "dependentSchemas"
       ) {
         // These are objects containing schemas
         for (const subKey in _jsonSchema[key]) {
@@ -75,7 +78,12 @@ export function convertToOpenAPISchema(
             context
           );
         }
-      } else if (key === "allOf" || key === "anyOf" || key === "oneOf") {
+      } else if (
+        key === "allOf" ||
+        key === "anyOf" ||
+        key === "oneOf" ||
+        key === "prefixItems"
+      ) {
         // These are arrays of schemas
         _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
           convertToOpenAPISchema(item, context)
