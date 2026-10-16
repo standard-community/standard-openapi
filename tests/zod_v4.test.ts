@@ -167,4 +167,25 @@ describe("zod v4", () => {
       ]);
     });
   });
+
+  it("turns named tuple elements into component references", async () => {
+    const First = z.object({ a: z.string() }).meta({ ref: "First" });
+    const Second = z.object({ b: z.string() }).meta({ id: "Second" });
+
+    const { schema, components } = await toOpenAPISchema(
+      z.tuple([First, Second]),
+    );
+
+    expect(schema).toEqual({
+      type: "array",
+      prefixItems: [
+        { $ref: "#/components/schemas/First" },
+        { $ref: "#/components/schemas/Second" },
+      ],
+    });
+    expect(Object.keys(components?.schemas ?? {}).toSorted()).toEqual([
+      "First",
+      "Second",
+    ]);
+  });
 });

@@ -54,6 +54,12 @@ const convert = (
   context: ToOpenAPISchemaContext,
   document: SchemaDocument,
 ): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject => {
+  // `true` and `false` are schemas too, wherever a subschema can be, and
+  // there's nothing in them to convert.
+  if (typeof jsonSchema === "boolean") {
+    return jsonSchema;
+  }
+
   const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
 
   // Handle nullable property conversion
@@ -88,6 +94,7 @@ const convert = (
     "properties",
     "additionalProperties",
     "items",
+    "prefixItems",
     "additionalItems",
     "allOf",
     "anyOf",
@@ -99,10 +106,11 @@ const convert = (
     "definitions",
     "$defs",
     "patternProperties",
+    "dependentSchemas",
     "propertyNames",
     "contains",
-    // "unevaluatedProperties",
-    // "unevaluatedItems",
+    "unevaluatedProperties",
+    "unevaluatedItems",
   ] as const;
 
   nestedSchemaKeys.forEach((key) => {
@@ -114,7 +122,8 @@ const convert = (
         key === "properties" ||
         key === "definitions" ||
         key === "$defs" ||
-        key === "patternProperties"
+        key === "patternProperties" ||
+        key === "dependentSchemas"
       ) {
         // These are objects containing schemas
         for (const subKey in _jsonSchema[key]) {
@@ -124,7 +133,12 @@ const convert = (
             document,
           );
         }
-      } else if (key === "allOf" || key === "anyOf" || key === "oneOf") {
+      } else if (
+        key === "allOf" ||
+        key === "anyOf" ||
+        key === "oneOf" ||
+        key === "prefixItems"
+      ) {
         // These are arrays of schemas
         _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
           convert(item, context, document),
