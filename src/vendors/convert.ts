@@ -6,6 +6,12 @@ export function convertToOpenAPISchema(
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext
 ): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject {
+  // `true` and `false` are schemas too, wherever a subschema can be, and
+  // there's nothing in them to convert.
+  if (typeof jsonSchema === "boolean") {
+    return jsonSchema;
+  }
+
   const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
 
   // Handle nullable property conversion
