@@ -145,10 +145,13 @@ export function convertToOpenAPISchema(
       return { ...rest, $ref };
     }
 
-    // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs
+    // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs.
+    // Keywords beside the reference, such as the description a field gives the
+    // schema it refers to, belong to that use of it, so they stay beside it.
     const ref = $ref.split("/").pop();
 
     return {
+      ...rest,
       $ref: `#/components/schemas/${ref}`,
     };
   }
