@@ -215,6 +215,7 @@ const convert = (
     "dependentSchemas",
     "propertyNames",
     "contains",
+    "contentSchema",
     "unevaluatedProperties",
     "unevaluatedItems",
   ] as const;
