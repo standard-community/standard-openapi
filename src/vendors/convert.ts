@@ -9,6 +9,8 @@ import type { ToOpenAPISchemaContext } from "./utils.js";
 type SchemaDocument = {
   /** The component name of the root schema, when it has one. */
   root?: string;
+  /** Uses of an unnamed root, registered after its nested components. */
+  rootReferences: OpenAPIV3_1.ReferenceObject[];
   /** The component name of each `$defs`/`definitions` entry that has one. */
   names: Record<string, string>;
   /** The description each named schema gives itself, by component name. */
@@ -39,6 +41,7 @@ const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
     descriptions,
     names: Object.fromEntries(named.map(({ key, name }) => [key, name])),
     root,
+    rootReferences: [],
   };
 };
 
@@ -75,6 +78,54 @@ const usesByComponents = new WeakMap<
   OpenAPIV3_1.ComponentsObject,
   Map<string, Uses>
 >();
+
+// Generated names remain movable until callers finish filling components.
+const generatedRoots = new WeakMap<
+  OpenAPIV3_1.ComponentsObject,
+  Map<string, OpenAPIV3_1.ReferenceObject[]>
+>();
+
+const freeRootName = (
+  components: OpenAPIV3_1.ComponentsObject,
+  reserved?: ReadonlySet<string>,
+): string => {
+  let name = "Root";
+  for (
+    let suffix = 2;
+    Object.hasOwn(components.schemas ?? {}, name) || reserved?.has(name);
+    suffix++
+  ) {
+    name = `Root${suffix}`;
+  }
+  return name;
+};
+
+/** Give an explicit component its name without overwriting an unnamed root. */
+const moveGeneratedRoot = (
+  id: string,
+  components: OpenAPIV3_1.ComponentsObject,
+  reserved?: ReadonlySet<string>,
+) => {
+  const roots = generatedRoots.get(components);
+  const references = roots?.get(id);
+  if (!references || !components.schemas) return;
+
+  const name = freeRootName(components, reserved);
+  components.schemas[name] = components.schemas[id];
+  delete components.schemas[id];
+  for (const reference of references) {
+    reference.$ref = `#/components/schemas/${name}`;
+  }
+  roots?.delete(id);
+  roots?.set(name, references);
+
+  const uses = usesByComponents.get(components);
+  const previous = uses?.get(id);
+  if (previous) {
+    uses?.delete(id);
+    uses?.set(name, previous);
+  }
+};
 
 /**
  * Records a use of the named schema `id` with the description it carries, and
@@ -138,6 +189,7 @@ const register = (
   schema: OpenAPIV3_1.SchemaObject,
   { components }: ToOpenAPISchemaContext,
 ): OpenAPIV3_1.ReferenceObject => {
+  moveGeneratedRoot(id, components);
   const { description, ...undescribed } = schema;
   const { reference, shared } = use(id, description, components);
 
@@ -152,8 +204,30 @@ const register = (
 export const convertToOpenAPISchema = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
-): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject =>
-  convert(jsonSchema, context, describeDocument(jsonSchema));
+): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject => {
+  const document = describeDocument(jsonSchema);
+  const names = new Set(Object.values(document.names));
+  if (document.root) names.add(document.root);
+  for (const name of names) {
+    moveGeneratedRoot(name, context.components, names);
+  }
+  const schema = convert(jsonSchema, context, document);
+  if (document.rootReferences.length === 0) {
+    return schema;
+  }
+
+  // Nested definitions have all been registered, so the generated root name
+  // cannot overwrite them or a component from an earlier conversion.
+  const name = freeRootName(context.components);
+  const reference = register(name, schema, context);
+  for (const use of document.rootReferences) {
+    use.$ref = reference.$ref;
+  }
+  const roots = generatedRoots.get(context.components) ?? new Map();
+  roots.set(name, [reference, ...document.rootReferences]);
+  generatedRoots.set(context.components, roots);
+  return reference;
+};
 
 const convert = (
   jsonSchema: JSONSchema7,
@@ -283,6 +357,10 @@ const convert = (
       ..._jsonSchema.$defs,
     }).filter(([key]) => !Object.hasOwn(document.names, key));
 
+    const names = new Set(lifted.map(([name]) => name));
+    for (const name of names) {
+      moveGeneratedRoot(name, context.components, names);
+    }
     context.components.schemas = {
       ...Object.fromEntries(lifted),
       ...context.components.schemas,
@@ -314,6 +392,12 @@ const convert = (
     // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs.
     // Keywords beside the reference, such as the description a field gives the
     // schema it refers to, belong to that use of it, so they stay beside it.
+    if ($ref === "#" && !document.root) {
+      const reference = { ...rest, $ref };
+      document.rootReferences.push(reference);
+      return reference;
+    }
+
     const named = namedComponent($ref, document);
 
     // A bare reference to a named schema uses it as it describes itself, which

@@ -326,4 +326,45 @@ describe("zod v4", () => {
       "Second",
     ]);
   });
+
+  it("keeps unnamed recursion valid when embedded in an OpenAPI document", async () => {
+    const Node: z.ZodType<unknown> = z.object({
+      value: z.string(),
+      get next() {
+        return Node.optional();
+      },
+    });
+    const { schema, components } = await toOpenAPISchema(Node);
+    const document = {
+      components,
+      paths: {
+        "/nodes": {
+          get: {
+            responses: {
+              200: {
+                description: "OK",
+                content: { "application/json": { schema } },
+              },
+            },
+          },
+        },
+      },
+    };
+    const responseSchema =
+      document.paths["/nodes"].get.responses[200].content["application/json"]
+        .schema;
+    expect(responseSchema).toHaveProperty("$ref");
+    const rootRef = (responseSchema as { $ref: string }).$ref;
+    expect(rootRef).toMatch(/^#\/components\/schemas\/[^/]+$/);
+    const root = document.components?.schemas?.[rootRef.split("/").pop()!] as {
+      properties: Record<string, unknown>;
+    };
+    expect(root).toMatchObject({
+      type: "object",
+      properties: {
+        value: { type: "string" },
+        next: { $ref: rootRef },
+      },
+    });
+  });
 });

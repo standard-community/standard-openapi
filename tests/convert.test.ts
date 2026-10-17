@@ -43,4 +43,107 @@ describe("convertToOpenAPISchema", () => {
       convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
     ).toEqual(jsonSchema);
   });
+
+  it("registers anonymous recursive roots without taking existing or nested names", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {
+      schemas: { Root: { type: "string" } },
+    };
+    const jsonSchema = {
+      type: "object",
+      properties: {
+        next: { $ref: "#", description: "The next node" },
+        named: { ref: "Root2", type: "integer" },
+      },
+    };
+    const first = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+      components,
+    });
+    const second = convertToOpenAPISchema(
+      { type: "array", items: { $ref: "#" } },
+      { components },
+    );
+    const repeated = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+      components,
+    });
+
+    expect(first).toEqual({ $ref: "#/components/schemas/Root3" });
+    expect(second).toEqual({ $ref: "#/components/schemas/Root4" });
+    expect(repeated).toEqual({ $ref: "#/components/schemas/Root5" });
+    expect(components.schemas).toMatchObject({
+      Root: { type: "string" },
+      Root2: { type: "integer" },
+      Root3: {
+        type: "object",
+        properties: {
+          next: {
+            $ref: "#/components/schemas/Root3",
+            description: "The next node",
+          },
+          named: { $ref: "#/components/schemas/Root2" },
+        },
+      },
+      Root4: { type: "array", items: { $ref: "#/components/schemas/Root4" } },
+      Root5: { properties: { next: { $ref: "#/components/schemas/Root5" } } },
+    });
+  });
+
+  it("leaves anonymous nonrecursive schemas inline, including literal root references", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const schema = {
+      type: "object",
+      examples: [{ $ref: "#" }],
+      default: { $ref: "#" },
+    };
+    expect(
+      convertToOpenAPISchema(schema as JSONSchema7, { components }),
+    ).toEqual(schema);
+    expect(components).toEqual({});
+  });
+
+  it.each([
+    [
+      "metadata",
+      [
+        { ref: "Root", type: "string", description: "Explicit" },
+        { ref: "Root2", type: "integer" },
+      ],
+    ],
+    [
+      "hoisted definitions",
+      [
+        {
+          $defs: {
+            Root: { type: "string", description: "Explicit" },
+            Root2: { type: "integer" },
+          },
+        },
+      ],
+    ],
+  ])(
+    "moves generated roots when later %s claim their names",
+    (_, definitions) => {
+      const components: OpenAPIV3_1.ComponentsObject = {};
+      const schema = convertToOpenAPISchema(
+        {
+          type: "object",
+          description: "Recursive",
+          properties: { next: { $ref: "#" } },
+        },
+        { components },
+      );
+      for (const definition of definitions) {
+        convertToOpenAPISchema(definition as JSONSchema7, { components });
+      }
+      expect(schema).toEqual({ $ref: "#/components/schemas/Root3" });
+      expect(components.schemas).toEqual({
+        Root: { type: "string", description: "Explicit" },
+        Root2: { type: "integer" },
+        Root3: {
+          type: "object",
+          description: "Recursive",
+          properties: { next: { $ref: "#/components/schemas/Root3" } },
+        },
+      });
+    },
+  );
 });
