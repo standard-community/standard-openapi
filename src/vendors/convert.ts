@@ -9,6 +9,8 @@ import type { ToOpenAPISchemaContext } from "./utils.js";
 type SchemaDocument = {
   /** The component name of the root schema, when it has one. */
   root?: string;
+  /** Uses of an unnamed root, registered after its nested components. */
+  rootReferences: OpenAPIV3_1.ReferenceObject[];
   /** The component name of each `$defs`/`definitions` entry that has one. */
   names: Record<string, string>;
   /** The description each named schema gives itself, by component name. */
@@ -39,6 +41,7 @@ const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
     descriptions,
     names: Object.fromEntries(named.map(({ key, name }) => [key, name])),
     root,
+    rootReferences: [],
   };
 };
 
@@ -152,8 +155,29 @@ const register = (
 export const convertToOpenAPISchema = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
-): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject =>
-  convert(jsonSchema, context, describeDocument(jsonSchema));
+): OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject => {
+  const document = describeDocument(jsonSchema);
+  const schema = convert(jsonSchema, context, document);
+  if (document.rootReferences.length === 0) {
+    return schema;
+  }
+
+  // Nested definitions have all been registered, so the generated root name
+  // cannot overwrite them or a component from an earlier conversion.
+  let name = "Root";
+  for (
+    let suffix = 2;
+    Object.hasOwn(context.components.schemas ?? {}, name);
+    suffix++
+  ) {
+    name = `Root${suffix}`;
+  }
+  const reference = register(name, schema, context);
+  for (const use of document.rootReferences) {
+    use.$ref = reference.$ref;
+  }
+  return reference;
+};
 
 const convert = (
   jsonSchema: JSONSchema7,
@@ -313,6 +337,12 @@ const convert = (
     // Convert internal refs (e.g. Effect's #/$defs/) to OpenAPI component refs.
     // Keywords beside the reference, such as the description a field gives the
     // schema it refers to, belong to that use of it, so they stay beside it.
+    if ($ref === "#" && !document.root) {
+      const reference = { ...rest, $ref };
+      document.rootReferences.push(reference);
+      return reference;
+    }
+
     const named = namedComponent($ref, document);
 
     // A bare reference to a named schema uses it as it describes itself, which
