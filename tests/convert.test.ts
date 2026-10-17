@@ -99,4 +99,51 @@ describe("convertToOpenAPISchema", () => {
     ).toEqual(schema);
     expect(components).toEqual({});
   });
+
+  it.each([
+    [
+      "metadata",
+      [
+        { ref: "Root", type: "string", description: "Explicit" },
+        { ref: "Root2", type: "integer" },
+      ],
+    ],
+    [
+      "hoisted definitions",
+      [
+        {
+          $defs: {
+            Root: { type: "string", description: "Explicit" },
+            Root2: { type: "integer" },
+          },
+        },
+      ],
+    ],
+  ])(
+    "moves generated roots when later %s claim their names",
+    (_, definitions) => {
+      const components: OpenAPIV3_1.ComponentsObject = {};
+      const schema = convertToOpenAPISchema(
+        {
+          type: "object",
+          description: "Recursive",
+          properties: { next: { $ref: "#" } },
+        },
+        { components },
+      );
+      for (const definition of definitions) {
+        convertToOpenAPISchema(definition as JSONSchema7, { components });
+      }
+      expect(schema).toEqual({ $ref: "#/components/schemas/Root3" });
+      expect(components.schemas).toEqual({
+        Root: { type: "string", description: "Explicit" },
+        Root2: { type: "integer" },
+        Root3: {
+          type: "object",
+          description: "Recursive",
+          properties: { next: { $ref: "#/components/schemas/Root3" } },
+        },
+      });
+    },
+  );
 });
