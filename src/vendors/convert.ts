@@ -328,6 +328,159 @@ const liftedName = (
   }
 };
 
+/**
+ * The groups of definitions that refer to each other, as they were placed
+ * together, so a later conversion of the same group can find and share them.
+ */
+const generatedGroups = new WeakMap<OpenAPIV3_1.ComponentsObject, string[][]>();
+
+/** What a reference to the `index`th member of a group is written as when comparing groups. */
+const member = (index: number) => `#group/${index}`;
+
+/**
+ * A group of definitions as text, with the references between its members
+ * written by position, so the same group compares equal whatever its members
+ * are named.
+ */
+const groupShape = (schemas: unknown[], memberOf: (ref: string) => number) =>
+  JSON.stringify(schemas, (key, value) => {
+    if (key !== "$ref" || typeof value !== "string") {
+      return value;
+    }
+    const index = memberOf(value);
+    return index === -1 ? value : member(index);
+  });
+
+/** Every object inside `value`, `value` included. */
+const objectsIn = (value: unknown) => {
+  const seen = new Set<unknown>();
+  const pending = [value];
+  while (pending.length > 0) {
+    const next = pending.pop();
+    if (next !== null && typeof next === "object" && !seen.has(next)) {
+      seen.add(next);
+      pending.push(...Object.values(next));
+    }
+  }
+  return seen;
+};
+
+/**
+ * The definitions to lift, in groups that refer to each other, each group after
+ * the ones it refers to. A definition only refers to others through the
+ * references `convert` collected for them, so those say which way each edge
+ * goes.
+ */
+const liftingGroups = (
+  lifted: [string, OpenAPIV3_1.SchemaObject][],
+  references: Record<string, OpenAPIV3_1.ReferenceObject[]>,
+) => {
+  const keys = lifted.map(([key]) => key);
+  const edges = new Map(
+    lifted.map(([key, schema]) => {
+      const inside = objectsIn(schema);
+      return [
+        key,
+        keys.filter((other) =>
+          (references[other] ?? []).some((reference) => inside.has(reference)),
+        ),
+      ];
+    }),
+  );
+
+  // Tarjan's algorithm, which yields each group after the groups it refers to.
+  const index = new Map<string, number>();
+  const lowest = new Map<string, number>();
+  const stack: string[] = [];
+  const groups: string[][] = [];
+  const visit = (key: string) => {
+    index.set(key, index.size);
+    lowest.set(key, index.get(key) as number);
+    stack.push(key);
+    for (const other of edges.get(key) ?? []) {
+      if (!index.has(other)) {
+        visit(other);
+        lowest.set(
+          key,
+          Math.min(lowest.get(key) as number, lowest.get(other) as number),
+        );
+      } else if (stack.includes(other)) {
+        lowest.set(
+          key,
+          Math.min(lowest.get(key) as number, index.get(other) as number),
+        );
+      }
+    }
+    if (lowest.get(key) === index.get(key)) {
+      const group = stack.splice(stack.indexOf(key));
+      groups.push(keys.filter((candidate) => group.includes(candidate)));
+    }
+  };
+  keys.filter((key) => !index.has(key)).forEach(visit);
+  return groups;
+};
+
+/**
+ * Where a group of definitions that refer to each other goes: the components of
+ * an earlier conversion of the same group, which it then shares, or each
+ * member under its key or the next free name after it.
+ *
+ * Placing them one at a time can't find an earlier conversion of the group,
+ * because each member is compared while its references to the others still
+ * point nowhere, so the group is compared as a whole, by position.
+ */
+const groupNames = (
+  keys: string[],
+  schemas: OpenAPIV3_1.SchemaObject[],
+  references: OpenAPIV3_1.ReferenceObject[][],
+  components: OpenAPIV3_1.ComponentsObject,
+  added: ReadonlyMap<string, unknown>,
+) => {
+  references.forEach((group, position) => {
+    group.forEach((reference) => {
+      reference.$ref = member(position);
+    });
+  });
+  const shape = groupShape(schemas, (ref) =>
+    ref.startsWith("#group/") ? Number(ref.slice("#group/".length)) : -1,
+  );
+
+  const earlier = (generatedGroups.get(components) ?? []).find((names) => {
+    if (names.length !== keys.length) {
+      return false;
+    }
+    const existing = names.map(
+      (name) => added.get(name) ?? components.schemas?.[name],
+    );
+    return (
+      existing.every((schema) => schema !== undefined) &&
+      groupShape(existing, (ref) =>
+        names.indexOf(ref.slice("#/components/schemas/".length)),
+      ) === shape
+    );
+  });
+  // Each member's name has to stay clear of the ones chosen before it.
+  const taken = new Set(added.keys());
+  const names =
+    earlier ??
+    keys.map((key) => {
+      const name = freeName(
+        GENERATED_KEY.test(key) ? "Schema" : key,
+        components,
+        taken,
+      );
+      taken.add(name);
+      return name;
+    });
+
+  references.forEach((group, position) => {
+    group.forEach((reference) => {
+      reference.$ref = `#/components/schemas/${names[position]}`;
+    });
+  });
+  return { names, shared: earlier !== undefined };
+};
+
 /** Give an explicit component its name without overwriting an unnamed root. */
 const moveGeneratedRoot = (
   id: string,
@@ -346,6 +499,13 @@ const moveGeneratedRoot = (
   }
   roots?.delete(id);
   roots?.set(name, generated);
+  // A group placed together keeps finding its moved member under its new name.
+  generatedGroups.get(components)?.forEach((names) => {
+    const position = names.indexOf(id);
+    if (position !== -1) {
+      names[position] = name;
+    }
+  });
 
   const uses = usesByComponents.get(components);
   const previous = uses?.get(id);
@@ -710,25 +870,49 @@ const convert = (
     }
 
     // Each definition's name depends on the ones lifted before it, so they're
-    // placed one at a time, collected here and added together.
+    // placed one group at a time, collected here and added together. A group is
+    // a definition on its own, or definitions that refer to each other, which
+    // can only be compared to an earlier conversion together.
     const added = new Map<string, OpenAPIV3_1.SchemaObject>();
-    for (const [key, schema] of lifted) {
-      const references = document.unnamed[key] ?? [];
-      const { name, shared } = liftedName(
-        key,
-        schema,
-        references,
-        context.components,
-        added,
+    const schemaOf = new Map(lifted);
+    for (const keys of liftingGroups(lifted, document.unnamed)) {
+      const schemas = keys.map(
+        (key) => schemaOf.get(key) as OpenAPIV3_1.SchemaObject,
       );
-      document.lifted[key] = name;
-      if (shared) {
-        follow(name, references, context.components);
-      } else {
-        added.set(name, schema);
-        if (GENERATED_KEY.test(key)) {
-          remember(name, { base: "Schema", references }, context.components);
+      const references = keys.map((key) => document.unnamed[key] ?? []);
+      const single =
+        keys.length === 1 &&
+        liftedName(
+          keys[0],
+          schemas[0],
+          references[0],
+          context.components,
+          added,
+        );
+      const { names, shared } = single
+        ? { names: [single.name], shared: single.shared }
+        : groupNames(keys, schemas, references, context.components, added);
+
+      keys.forEach((key, position) => {
+        const name = names[position];
+        document.lifted[key] = name;
+        if (shared) {
+          follow(name, references[position], context.components);
+        } else {
+          added.set(name, schemas[position]);
+          if (GENERATED_KEY.test(key)) {
+            remember(
+              name,
+              { base: "Schema", references: references[position] },
+              context.components,
+            );
+          }
         }
+      });
+      if (!shared && keys.length > 1) {
+        const groups = generatedGroups.get(context.components) ?? [];
+        groups.push([...names]);
+        generatedGroups.set(context.components, groups);
       }
     }
     context.components.schemas = {

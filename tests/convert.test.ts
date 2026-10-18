@@ -715,4 +715,34 @@ describe("convertToOpenAPISchema", () => {
       },
     });
   });
+
+  it("shares a definition that refers to one placed after it when converted again", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // valibot numbers the definitions it has no name for, and numbered keys
+    // come before every other key, so this one is placed before `Pet`.
+    const list = (key: string) =>
+      ({
+        $defs: {
+          Pet: { properties: { name: { type: "string" } }, type: "object" },
+          [key]: {
+            properties: {
+              next: { $ref: `#/$defs/${key}` },
+              pet: { $ref: "#/$defs/Pet" },
+            },
+            type: "object",
+          },
+        },
+        properties: { head: { $ref: `#/$defs/${key}` } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(list("0"), { components });
+    const second = convertToOpenAPISchema(list("1"), { components });
+
+    expect(second).toEqual(first);
+    expect(Object.keys(components.schemas ?? {}).toSorted()).toEqual([
+      "Pet",
+      "Schema",
+    ]);
+  });
 });

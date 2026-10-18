@@ -560,4 +560,148 @@ describe("zod v4", () => {
       });
     });
   });
+
+  describe("unnamed definitions that refer to each other", () => {
+    const Folder: z.ZodType<unknown> = z.object({
+      title: z.string(),
+      get parent() {
+        return Folder.optional();
+      },
+      get readme() {
+        return File.optional();
+      },
+    });
+    const File: z.ZodType<unknown> = z.object({
+      name: z.string(),
+      get previous() {
+        return File.optional();
+      },
+      get folder() {
+        return Folder;
+      },
+    });
+    const drive = z.object({ root: Folder }).meta({ ref: "Drive" });
+    const share = z.object({ home: Folder }).meta({ ref: "Share" });
+
+    it("share their components when the same pair is converted again", async () => {
+      const components = {};
+
+      await toOpenAPISchema(drive, { components });
+      await toOpenAPISchema(share, { components });
+
+      expect(
+        Object.keys((components as { schemas: object }).schemas).toSorted(),
+      ).toEqual(["Drive", "Schema", "Schema2", "Share"]);
+      expect(components).toMatchObject({
+        schemas: {
+          Schema: {
+            properties: {
+              parent: { $ref: "#/components/schemas/Schema" },
+              readme: { $ref: "#/components/schemas/Schema2" },
+            },
+          },
+          Schema2: {
+            properties: {
+              folder: { $ref: "#/components/schemas/Schema" },
+              previous: { $ref: "#/components/schemas/Schema2" },
+            },
+          },
+          Share: {
+            properties: { home: { $ref: "#/components/schemas/Schema" } },
+          },
+        },
+      });
+    });
+
+    it("get components of their own when the pair differs", async () => {
+      const Album: z.ZodType<unknown> = z.object({
+        title: z.string(),
+        get parent() {
+          return Album.optional();
+        },
+        get cover() {
+          return Photo.optional();
+        },
+      });
+      const Photo: z.ZodType<unknown> = z.object({
+        caption: z.string(),
+        get previous() {
+          return Photo.optional();
+        },
+        get album() {
+          return Album;
+        },
+      });
+      const components = {};
+
+      await toOpenAPISchema(drive, { components });
+      await toOpenAPISchema(
+        z.object({ latest: Album }).meta({ ref: "Gallery" }),
+        {
+          components,
+        },
+      );
+
+      expect(components).toMatchObject({
+        schemas: {
+          Gallery: {
+            properties: { latest: { $ref: "#/components/schemas/Schema3" } },
+          },
+          Schema3: {
+            properties: {
+              cover: { $ref: "#/components/schemas/Schema4" },
+              title: { type: "string" },
+            },
+          },
+          Schema4: {
+            properties: { album: { $ref: "#/components/schemas/Schema3" } },
+          },
+        },
+      });
+    });
+
+    it("move aside, with every use of them, for a schema named Schema later", async () => {
+      const components = {};
+
+      await toOpenAPISchema(drive, { components });
+      await toOpenAPISchema(share, { components });
+      await toOpenAPISchema(
+        z.object({ version: z.string() }).meta({ ref: "Schema" }),
+        { components },
+      );
+      await toOpenAPISchema(
+        z.object({ desk: Folder }).meta({ ref: "Office" }),
+        {
+          components,
+        },
+      );
+
+      expect(
+        Object.keys((components as { schemas: object }).schemas).toSorted(),
+      ).toEqual(["Drive", "Office", "Schema", "Schema2", "Schema3", "Share"]);
+      expect(components).toMatchObject({
+        schemas: {
+          Drive: {
+            properties: { root: { $ref: "#/components/schemas/Schema3" } },
+          },
+          Office: {
+            properties: { desk: { $ref: "#/components/schemas/Schema3" } },
+          },
+          Schema: { properties: { version: { type: "string" } } },
+          Schema2: {
+            properties: { folder: { $ref: "#/components/schemas/Schema3" } },
+          },
+          Schema3: {
+            properties: {
+              parent: { $ref: "#/components/schemas/Schema3" },
+              readme: { $ref: "#/components/schemas/Schema2" },
+            },
+          },
+          Share: {
+            properties: { home: { $ref: "#/components/schemas/Schema3" } },
+          },
+        },
+      });
+    });
+  });
 });
