@@ -1,4 +1,26 @@
 # Changelog
+## 0.2.11
+
+### Bug Fixes 🐛
+
+#### Schema
+
+- Register unnamed recursive roots safely by @MathurAditya724 in [#29](https://github.com/standard-community/standard-openapi/pull/29)
+- Convert references inside contentSchema by @MathurAditya724 in [#30](https://github.com/standard-community/standard-openapi/pull/30)
+
+#### Other
+
+- Keep a field's description beside its reference to a named schema by @MichaelDeBoey in [#26](https://github.com/standard-community/standard-openapi/pull/26)
+- Convert schemas under every JSON Schema 2020-12 subschema keyword by @MichaelDeBoey in [#25](https://github.com/standard-community/standard-openapi/pull/25)
+- Point recursive schema references at their component by @MichaelDeBoey in [#20](https://github.com/standard-community/standard-openapi/pull/20)
+- Report zod-openapi's own errors instead of a missing dependency by @MichaelDeBoey in [#24](https://github.com/standard-community/standard-openapi/pull/24)
+- Keep the keywords beside an internal reference by @MichaelDeBoey in [#21](https://github.com/standard-community/standard-openapi/pull/21)
+
+### Documentation 📚
+
+- Add Craft pull request guidance by @MathurAditya724 in [#28](https://github.com/standard-community/standard-openapi/pull/28)
+- Clarify Zod v3 and v4 support by @MathurAditya724 in [#18](https://github.com/standard-community/standard-openapi/pull/18)
+
 ## 0.2.10
 
 ### New Features ✨
