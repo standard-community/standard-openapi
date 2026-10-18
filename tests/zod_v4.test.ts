@@ -428,4 +428,98 @@ describe("zod v4", () => {
       anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
     });
   });
+
+  describe("unnamed recursion inside a named schema", () => {
+    const Tree: z.ZodType<unknown> = z.object({
+      label: z.string(),
+      get children() {
+        return z.array(Tree);
+      },
+    });
+    const Folder: z.ZodType<unknown> = z.object({
+      name: z.string(),
+      get folders() {
+        return z.array(Folder);
+      },
+    });
+    const forest = z.object({ root: Tree }).meta({ ref: "Forest" });
+    const drive = z.object({ top: Folder }).meta({ ref: "Drive" });
+
+    it("gets a generated name rather than the key zod gave it", async () => {
+      const { components } = await toOpenAPISchema(forest);
+
+      expect(Object.keys(components?.schemas ?? {}).toSorted()).toEqual([
+        "Forest",
+        "Schema",
+      ]);
+      expect(components?.schemas?.Forest).toMatchObject({
+        properties: { root: { $ref: "#/components/schemas/Schema" } },
+      });
+      expect(components?.schemas?.Schema).toMatchObject({
+        properties: {
+          children: { items: { $ref: "#/components/schemas/Schema" } },
+        },
+      });
+    });
+
+    it("keeps a second conversion's own schema apart from the first's", async () => {
+      const components = {};
+
+      await toOpenAPISchema(forest, { components });
+      await toOpenAPISchema(drive, { components });
+
+      expect(components).toMatchObject({
+        schemas: {
+          Drive: {
+            properties: { top: { $ref: "#/components/schemas/Schema2" } },
+          },
+          Forest: {
+            properties: { root: { $ref: "#/components/schemas/Schema" } },
+          },
+          Schema: { properties: { label: { type: "string" } } },
+          Schema2: { properties: { name: { type: "string" } } },
+        },
+      });
+    });
+
+    it("shares one component when the same schema is converted again", async () => {
+      const components = {};
+
+      await toOpenAPISchema(forest, { components });
+      await toOpenAPISchema(z.object({ shade: Tree }).meta({ ref: "Park" }), {
+        components,
+      });
+
+      expect(Object.keys(components).length).toBe(1);
+      expect(
+        Object.keys((components as { schemas: object }).schemas).toSorted(),
+      ).toEqual(["Forest", "Park", "Schema"]);
+    });
+
+    it("moves aside, with every use of it, for a schema named Schema later", async () => {
+      const components = {};
+
+      await toOpenAPISchema(forest, { components });
+      await toOpenAPISchema(z.object({ shade: Tree }).meta({ ref: "Park" }), {
+        components,
+      });
+      await toOpenAPISchema(
+        z.object({ version: z.string() }).meta({ ref: "Schema" }),
+        { components },
+      );
+
+      expect(components).toMatchObject({
+        schemas: {
+          Forest: {
+            properties: { root: { $ref: "#/components/schemas/Schema2" } },
+          },
+          Park: {
+            properties: { shade: { $ref: "#/components/schemas/Schema2" } },
+          },
+          Schema: { properties: { version: { type: "string" } } },
+          Schema2: { properties: { label: { type: "string" } } },
+        },
+      });
+    });
+  });
 });
