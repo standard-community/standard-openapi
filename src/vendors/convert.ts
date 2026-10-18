@@ -15,6 +15,13 @@ type SchemaDocument = {
   names: Record<string, string>;
   /** The description each named schema gives itself, by component name. */
   descriptions: Record<string, string>;
+  /**
+   * The references to each `$defs`/`definitions` entry without a name, by key,
+   * pointed at its component once it's lifted and its name is known.
+   */
+  unnamed: Record<string, OpenAPIV3_1.ReferenceObject[]>;
+  /** The component each of those entries was lifted to, once it has been. */
+  lifted: Record<string, string>;
 };
 
 /**
@@ -33,12 +40,11 @@ const nameOf = (schema: unknown): string | undefined =>
 const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
   const { $defs, definitions } = jsonSchema as Record<string, any>;
 
-  const named = Object.entries<any>({ ...definitions, ...$defs }).flatMap(
-    ([key, entry]) => {
-      const name = nameOf(entry);
-      return name ? [{ entry, key, name }] : [];
-    },
-  );
+  const definitionEntries = Object.entries<any>({ ...definitions, ...$defs });
+  const named = definitionEntries.flatMap(([key, entry]) => {
+    const name = nameOf(entry);
+    return name ? [{ entry, key, name }] : [];
+  });
   const root = nameOf(jsonSchema);
 
   const descriptions = Object.fromEntries(
@@ -54,8 +60,21 @@ const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
     descriptions,
     names: Object.fromEntries(named.map(({ key, name }) => [key, name])),
     root,
+    lifted: {},
     rootReferences: [],
+    unnamed: Object.fromEntries(
+      definitionEntries
+        .filter(([key]) => !named.some((entry) => entry.key === key))
+        .map(([key]) => [key, []]),
+    ),
   };
+};
+
+/** The `$defs`/`definitions` key a local `$ref` points at, if it points at one. */
+const definitionKey = ($ref: string) => {
+  const token = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
+  // A JSON Pointer token escapes `/` as `~1` and `~` as `~0`, in that order.
+  return token?.replaceAll("~1", "/").replaceAll("~0", "~");
 };
 
 /** The component a local `$ref` points at, when it's a named schema. */
@@ -64,9 +83,7 @@ const namedComponent = ($ref: string, { names, root }: SchemaDocument) => {
     return root;
   }
 
-  const token = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
-  // A JSON Pointer token escapes `/` as `~1` and `~` as `~0`, in that order.
-  const key = token?.replaceAll("~1", "/").replaceAll("~0", "~");
+  const key = definitionKey($ref);
   return key && Object.hasOwn(names, key) ? names[key] : undefined;
 };
 
@@ -92,25 +109,60 @@ const usesByComponents = new WeakMap<
   Map<string, Uses>
 >();
 
+/**
+ * A component this converter named itself, from `base`, with the references to
+ * it, so an explicit name claimed later can move it to the next free name.
+ */
+type Generated = { base: string; references: OpenAPIV3_1.ReferenceObject[] };
+
 // Generated names remain movable until callers finish filling components.
 const generatedRoots = new WeakMap<
   OpenAPIV3_1.ComponentsObject,
-  Map<string, OpenAPIV3_1.ReferenceObject[]>
+  Map<string, Generated>
 >();
 
-const freeRootName = (
+/** `base`, or `base` with the first number after it that no component has. */
+const freeName = (
+  base: string,
   components: OpenAPIV3_1.ComponentsObject,
   reserved?: ReadonlySet<string>,
 ): string => {
-  let name = "Root";
+  let name = base;
   for (
     let suffix = 2;
     Object.hasOwn(components.schemas ?? {}, name) || reserved?.has(name);
     suffix++
   ) {
-    name = `Root${suffix}`;
+    name = `${base}${suffix}`;
   }
   return name;
+};
+
+/** Records `name` as one this converter generated from `base`. */
+const remember = (
+  name: string,
+  generated: Generated,
+  components: OpenAPIV3_1.ComponentsObject,
+) => {
+  const roots = generatedRoots.get(components) ?? new Map<string, Generated>();
+  roots.set(name, generated);
+  generatedRoots.set(components, roots);
+};
+
+/**
+ * Adds `references` to those a generated component `name` takes along when an
+ * explicit name claims it later. A component named explicitly never moves, so
+ * there's nothing to track for it.
+ */
+const follow = (
+  name: string,
+  references: OpenAPIV3_1.ReferenceObject[],
+  components: OpenAPIV3_1.ComponentsObject,
+) => {
+  generatedRoots
+    .get(components)
+    ?.get(name)
+    ?.references.push(...references);
 };
 
 /** Keywords whose value is a schema, or an array or a map of schemas. */
@@ -225,6 +277,52 @@ const matchingRoot = (
   );
 };
 
+/**
+ * The keys vendors give the definitions they have no name for: `__schema0` from
+ * zod, and `0` from valibot, which counts on across conversions. A definition
+ * under such a key is named here instead, from `Schema`, like an unnamed root
+ * is from `Root`.
+ */
+const GENERATED_KEY = /^(__schema)?\d+$/;
+
+/**
+ * Where a lifted definition goes: under its key, or the next free name after
+ * it, unless one of those already holds the same schema, which it then shares.
+ * Two conversions can each have a definition under the same key, for different
+ * schemas, so a key alone doesn't say which component a definition is. Its
+ * references are pointed at each candidate in turn, so a definition that
+ * refers to itself compares equal to the component holding it.
+ */
+const liftedName = (
+  key: string,
+  schema: unknown,
+  references: OpenAPIV3_1.ReferenceObject[],
+  components: OpenAPIV3_1.ComponentsObject,
+  added: ReadonlyMap<string, unknown>,
+) => {
+  const base = GENERATED_KEY.test(key) ? "Schema" : key;
+  const shape = (name: string, candidate: unknown) => {
+    references.forEach((reference) => {
+      reference.$ref = `#/components/schemas/${name}`;
+    });
+    return JSON.stringify(candidate);
+  };
+
+  let suffix = 1;
+  while (true) {
+    const name = suffix === 1 ? base : `${base}${suffix}`;
+    const existing = added.get(name) ?? components.schemas?.[name];
+    if (existing === undefined) {
+      shape(name, schema);
+      return { name, shared: false };
+    }
+    if (shape(name, existing) === JSON.stringify(schema)) {
+      return { name, shared: true };
+    }
+    suffix++;
+  }
+};
+
 /** Give an explicit component its name without overwriting an unnamed root. */
 const moveGeneratedRoot = (
   id: string,
@@ -232,17 +330,17 @@ const moveGeneratedRoot = (
   reserved?: ReadonlySet<string>,
 ) => {
   const roots = generatedRoots.get(components);
-  const references = roots?.get(id);
-  if (!references || !components.schemas) return;
+  const generated = roots?.get(id);
+  if (!generated || !components.schemas) return;
 
-  const name = freeRootName(components, reserved);
+  const name = freeName(generated.base, components, reserved);
   components.schemas[name] = components.schemas[id];
   delete components.schemas[id];
-  for (const reference of references) {
+  for (const reference of generated.references) {
     reference.$ref = `#/components/schemas/${name}`;
   }
   roots?.delete(id);
-  roots?.set(name, references);
+  roots?.set(name, generated);
 
   const uses = usesByComponents.get(components);
   const previous = uses?.get(id);
@@ -373,7 +471,7 @@ export const convertToOpenAPISchema = (
   // definitions have all been registered, so a generated root name cannot
   // overwrite them or a component from an earlier conversion.
   const existing = matchingRoot(schema, context.components);
-  const name = existing ?? freeRootName(context.components);
+  const name = existing ?? freeName("Root", context.components);
   const reference = existing
     ? use(
         existing,
@@ -387,13 +485,19 @@ export const convertToOpenAPISchema = (
   for (const use of document.rootReferences) {
     use.$ref = reference.$ref;
   }
-  const roots = generatedRoots.get(context.components) ?? new Map();
-  roots.set(name, [
-    ...(roots.get(name) ?? []),
-    reference,
-    ...document.rootReferences,
-  ]);
-  generatedRoots.set(context.components, roots);
+  const generated = generatedRoots.get(context.components)?.get(name);
+  remember(
+    name,
+    {
+      base: generated?.base ?? "Root",
+      references: [
+        ...(generated?.references ?? []),
+        reference,
+        ...document.rootReferences,
+      ],
+    },
+    context.components,
+  );
   return reference;
 };
 
@@ -591,12 +695,39 @@ const convert = (
       ..._jsonSchema.$defs,
     }).filter(([key]) => !Object.hasOwn(document.names, key));
 
-    const names = new Set(lifted.map(([name]) => name));
-    for (const name of names) {
-      moveGeneratedRoot(name, context.components, names);
+    // A key a vendor chose, such as an Effect identifier, claims its name the
+    // way an explicit name does, so a generated component moves aside for it.
+    const claimed = new Set(
+      lifted.map(([key]) => key).filter((key) => !GENERATED_KEY.test(key)),
+    );
+    for (const key of claimed) {
+      moveGeneratedRoot(key, context.components, claimed);
+    }
+
+    // Each definition's name depends on the ones lifted before it, so they're
+    // placed one at a time, collected here and added together.
+    const added = new Map<string, OpenAPIV3_1.SchemaObject>();
+    for (const [key, schema] of lifted) {
+      const references = document.unnamed[key] ?? [];
+      const { name, shared } = liftedName(
+        key,
+        schema,
+        references,
+        context.components,
+        added,
+      );
+      document.lifted[key] = name;
+      if (shared) {
+        follow(name, references, context.components);
+      } else {
+        added.set(name, schema);
+        if (GENERATED_KEY.test(key)) {
+          remember(name, { base: "Schema", references }, context.components);
+        }
+      }
     }
     context.components.schemas = {
-      ...Object.fromEntries(lifted),
+      ...Object.fromEntries(added),
       ...context.components.schemas,
     };
 
@@ -634,6 +765,23 @@ const convert = (
     if ($ref === "#" && !document.root) {
       const reference = { ...rest, $ref };
       document.rootReferences.push(reference);
+      return reference;
+    }
+
+    // A definition without a name is lifted under a name chosen once it's
+    // converted, so its references are kept until then. One converted after
+    // that, like a root that's only a reference to it, uses the name directly,
+    // and follows the component if a later explicit name moves it aside.
+    const key = definitionKey($ref);
+    if (key !== undefined && Object.hasOwn(document.lifted, key)) {
+      const name = document.lifted[key];
+      const reference = { ...rest, $ref: `#/components/schemas/${name}` };
+      follow(name, [reference], context.components);
+      return reference;
+    }
+    if (key !== undefined && Object.hasOwn(document.unnamed, key)) {
+      const reference = { ...rest, $ref };
+      document.unnamed[key].push(reference);
       return reference;
     }
 
