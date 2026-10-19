@@ -146,4 +146,109 @@ describe("convertToOpenAPISchema", () => {
       });
     },
   );
+
+  it.each<[string, Record<string, unknown>, Record<string, unknown>]>([
+    [
+      "a type",
+      { minLength: 1, nullable: true, type: "string" },
+      { minLength: 1, type: ["string", "null"] },
+    ],
+    [
+      "several types",
+      { nullable: true, type: ["string", "number"] },
+      { type: ["string", "number", "null"] },
+    ],
+    [
+      "an enum",
+      { enum: ["cat", "dog"], nullable: true, type: "string" },
+      { enum: ["cat", "dog", null], type: ["string", "null"] },
+    ],
+    [
+      "an enum and no type",
+      { enum: ["cat", "dog"], nullable: true },
+      { enum: ["cat", "dog", null] },
+    ],
+    [
+      "a union",
+      {
+        anyOf: [{ type: "string" }, { type: "number" }],
+        description: "A name or a number",
+        nullable: true,
+      },
+      {
+        anyOf: [
+          { anyOf: [{ type: "string" }, { type: "number" }] },
+          { type: "null" },
+        ],
+        description: "A name or a number",
+      },
+    ],
+    [
+      "a reference",
+      { $ref: "https://example.com/pet.json", nullable: true },
+      {
+        anyOf: [{ $ref: "https://example.com/pet.json" }, { type: "null" }],
+      },
+    ],
+    [
+      "a constant",
+      { const: "cat", nullable: true, type: "string" },
+      { anyOf: [{ const: "cat", type: "string" }, { type: "null" }] },
+    ],
+    [
+      "nothing to restrict",
+      { description: "Anything", nullable: true },
+      { description: "Anything" },
+    ],
+    [
+      "only keywords for other types",
+      { format: "date", minLength: 10, nullable: true },
+      { format: "date", minLength: 10 },
+    ],
+  ])(
+    "accepts null for a nullable schema with %s",
+    (_, jsonSchema, expected) => {
+      expect(
+        convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+      ).toEqual(expected);
+    },
+  );
+
+  it("registers a nullable named schema with null as one of its alternatives", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const jsonSchema = {
+      allOf: [{ properties: { name: { type: "string" } }, type: "object" }],
+      description: "A pet, if there is one",
+      nullable: true,
+      ref: "Pet",
+    };
+
+    const schema = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+      components,
+    });
+
+    expect(schema).toEqual({ $ref: "#/components/schemas/Pet" });
+    expect(components.schemas).toEqual({
+      Pet: {
+        anyOf: [
+          {
+            allOf: [
+              { properties: { name: { type: "string" } }, type: "object" },
+            ],
+          },
+          { type: "null" },
+        ],
+        description: "A pet, if there is one",
+      },
+    });
+  });
+
+  it("drops `nullable: false`", () => {
+    expect(
+      convertToOpenAPISchema(
+        { nullable: false, type: "string" } as JSONSchema7,
+        { components: {} },
+      ),
+    ).toEqual({ type: "string" });
+  });
 });
