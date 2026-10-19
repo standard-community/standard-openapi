@@ -6,10 +6,19 @@ import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
 
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) => {
+    const { overrideAction, ...options }: ConversionConfig =
+      context.options ?? {};
+
     const openapiSchema = await toJsonSchema(schema, {
       errorMode: "ignore",
+      ...options,
       // @ts-expect-error
-      overrideAction: ({ valibotAction, jsonSchema }) => {
+      overrideAction: (actionContext) => {
+        // A caller's own override runs first, so what it returns gets the
+        // same handling as the schema `valibot` writes by itself.
+        const jsonSchema =
+          overrideAction?.(actionContext) ?? actionContext.jsonSchema;
+        const { valibotAction } = actionContext;
         const _jsonSchema = convertToOpenAPISchema(jsonSchema, context);
         if (
           valibotAction.kind === "metadata" &&
@@ -41,7 +50,6 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
 
         return _jsonSchema;
       },
-      ...context.options,
     } satisfies ConversionConfig);
 
     if ("$schema" in openapiSchema) {
