@@ -367,4 +367,13 @@ describe("zod v4", () => {
       },
     });
   });
+
+  it("flattens a nullable union", async () => {
+    const schema = z.union([z.string(), z.number()]).nullable();
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
+    });
+  });
 });

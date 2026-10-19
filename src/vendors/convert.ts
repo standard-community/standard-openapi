@@ -305,6 +305,34 @@ const withoutNullable = ({ nullable, ...schema }: Record<string, any>) => {
   };
 };
 
+/**
+ * Replaces each member of an `allOf` or `anyOf` that holds nothing but the
+ * same keyword with that keyword's members, as both mean the same side by side.
+ * A member with anything beside it, such as its own description or a `$ref`,
+ * keeps its place.
+ * `oneOf` stays nested: a value matching every member of
+ * `{ oneOf: [{ oneOf: [a, b] }, c] }` is accepted, but `{ oneOf: [a, b, c] }`
+ * rejects it.
+ */
+const flatten = (keyword: string, members: unknown[]) => {
+  if (keyword !== "allOf" && keyword !== "anyOf") {
+    return members;
+  }
+
+  return members.flatMap((member) => {
+    if (typeof member !== "object" || member === null) {
+      return [member];
+    }
+
+    const nested = (member as Record<string, unknown>)[keyword];
+    return Array.isArray(nested) &&
+      nested.length > 0 &&
+      Object.keys(member).length === 1
+      ? nested
+      : [member];
+  });
+};
+
 const convert = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
@@ -398,9 +426,11 @@ const convert = (
         key === "oneOf" ||
         key === "prefixItems"
       ) {
-        // These are arrays of schemas
-        _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-          convert(item, context, document),
+        // These are arrays of schemas. Each member is converted, and so
+        // flattened, before it's spliced into this one.
+        _jsonSchema[key] = flatten(
+          key,
+          _jsonSchema[key].map((item: any) => convert(item, context, document)),
         );
       } else if (key === "items") {
         // Items can be a schema or array of schemas
