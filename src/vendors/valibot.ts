@@ -44,10 +44,12 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
       ...context.options,
     } satisfies ConversionConfig);
 
-    if ("$schema" in openapiSchema) {
-      delete openapiSchema.$schema;
-    }
-
-    return openapiSchema as OpenAPIV3_1.SchemaObject;
+    // The actions above were converted on their own, but whatever the
+    // converter does to a whole schema, like moving `$defs` into the
+    // components, has to happen to the result too.
+    return convertToOpenAPISchema(
+      openapiSchema,
+      context,
+    ) as OpenAPIV3_1.SchemaObject;
   };
 }

@@ -65,4 +65,32 @@ describe("valibot", () => {
     const specs = await toOpenAPISchema(responseSchema);
     expect(specs).toMatchSnapshot();
   });
+
+  it("moves definitions into the components", async () => {
+    const Pet = v.object({ name: v.string() });
+    const Owner = v.object({ pets: v.array(Pet) });
+    const components = {};
+
+    const { schema } = await toOpenAPISchema(Owner, {
+      components,
+      options: { definitions: { Pet } },
+    });
+
+    expect(schema).toEqual({
+      properties: {
+        pets: { items: { $ref: "#/components/schemas/Pet" }, type: "array" },
+      },
+      required: ["pets"],
+      type: "object",
+    });
+    expect(components).toEqual({
+      schemas: {
+        Pet: {
+          properties: { name: { type: "string" } },
+          required: ["name"],
+          type: "object",
+        },
+      },
+    });
+  });
 });
