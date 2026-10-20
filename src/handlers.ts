@@ -15,8 +15,8 @@ export const toOpenAPISchema = async (
 ) => {
   const fn = await getToOpenAPISchemaFn(schema["~standard"].vendor);
 
-  const { components = {}, options } = context;
-  const _schema = await fn(schema, { components, options });
+  const { components = {}, io, options } = context;
+  const _schema = await fn(schema, { components, io, options });
 
   // Convert JSON Schema to OpenAPI schema
   return {

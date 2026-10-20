@@ -40,4 +40,23 @@ describe("zod v3", () => {
 
     await expect(toOpenAPISchema(schema)).rejects.toThrow(/Shared/);
   });
+
+  it.each([
+    ["the input by default", {}, {}],
+    [
+      'the output with `io: "output"`',
+      { io: "output" as const },
+      { required: ["size"] },
+    ],
+  ])("describes %s", async (_, context, output) => {
+    const Order = z.object({ size: z.string().default("small") });
+
+    const { schema } = await toOpenAPISchema(Order, context);
+
+    expect(schema).toEqual({
+      properties: { size: { default: "small", type: "string" } },
+      type: "object",
+      ...output,
+    });
+  });
 });

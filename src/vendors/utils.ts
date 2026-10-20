@@ -9,6 +9,11 @@ export type OpenAPIMetadata = {
 
 export type ToOpenAPISchemaContext = {
   components: OpenAPIV3_1.ComponentsObject;
+  /**
+   * Whether to describe what a schema accepts or what it outputs, which differ
+   * for one that transforms or defaults its input. Defaults to `"input"`.
+   */
+  io?: "input" | "output";
   options?: Record<string, unknown>;
 };
 
