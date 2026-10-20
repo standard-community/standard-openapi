@@ -27,6 +27,31 @@ describe("valibot", () => {
     expect(specs).toMatchSnapshot();
   });
 
+  it.each([
+    [
+      "describes the input of a pipe that transforms it by default",
+      {},
+      "string",
+    ],
+    [
+      'describes its output with `typeMode: "output"`',
+      { typeMode: "output" },
+      "number",
+    ],
+  ])("%s", async (_, options, type) => {
+    const Order = v.object({
+      quantity: v.pipe(v.string(), v.transform(Number), v.number()),
+    });
+
+    const { schema } = await toOpenAPISchema(Order, { options });
+
+    expect(schema).toEqual({
+      properties: { quantity: { type } },
+      required: ["quantity"],
+      type: "object",
+    });
+  });
+
   it("with metadata", async () => {
     const schema = v.pipe(
       v.object({
