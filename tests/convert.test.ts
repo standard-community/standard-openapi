@@ -68,7 +68,7 @@ describe("convertToOpenAPISchema", () => {
 
     expect(first).toEqual({ $ref: "#/components/schemas/Root3" });
     expect(second).toEqual({ $ref: "#/components/schemas/Root4" });
-    expect(repeated).toEqual({ $ref: "#/components/schemas/Root5" });
+    expect(repeated).toEqual({ $ref: "#/components/schemas/Root3" });
     expect(components.schemas).toMatchObject({
       Root: { type: "string" },
       Root2: { type: "integer" },
@@ -83,9 +83,108 @@ describe("convertToOpenAPISchema", () => {
         },
       },
       Root4: { type: "array", items: { $ref: "#/components/schemas/Root4" } },
-      Root5: { properties: { next: { $ref: "#/components/schemas/Root5" } } },
+    });
+    expect(components.schemas).not.toHaveProperty("Root5");
+  });
+
+  it("reuses an anonymous recursive root, keeping each use's description beside its reference", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const node = (description: string) =>
+      ({
+        description,
+        properties: { next: { $ref: "#" }, value: { type: "string" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const head = convertToOpenAPISchema(node("The first node"), { components });
+    const tail = convertToOpenAPISchema(node("The last node"), { components });
+
+    expect(head).toEqual({
+      $ref: "#/components/schemas/Root",
+      description: "The first node",
+    });
+    expect(tail).toEqual({
+      $ref: "#/components/schemas/Root",
+      description: "The last node",
+    });
+    expect(Object.keys(components.schemas ?? {})).toEqual(["Root"]);
+    expect(components.schemas?.Root).not.toHaveProperty("description");
+  });
+
+  it("points a named definition converted again at the anonymous root it reuses", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // `ref` names a schema the way vendors annotate one, outside JSON Schema.
+    const category = () =>
+      ({
+        $defs: {
+          Subcategory: {
+            properties: { parent: { $ref: "#" } },
+            ref: "Subcategory",
+            type: "object",
+          },
+        },
+        properties: {
+          children: { items: { $ref: "#/$defs/Subcategory" }, type: "array" },
+        },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(category(), { components });
+    const second = convertToOpenAPISchema(category(), { components });
+
+    expect(first).toEqual({ $ref: "#/components/schemas/Root" });
+    expect(second).toEqual({ $ref: "#/components/schemas/Root" });
+    expect(components.schemas).toEqual({
+      Root: {
+        properties: {
+          children: {
+            items: { $ref: "#/components/schemas/Subcategory" },
+            type: "array",
+          },
+        },
+        type: "object",
+      },
+      Subcategory: {
+        properties: { parent: { $ref: "#/components/schemas/Root" } },
+        type: "object",
+      },
     });
   });
+
+  it.each([
+    ["const", (value: unknown) => value],
+    ["default", (value: unknown) => value],
+    ["enum", (value: unknown) => [value]],
+    ["examples", (value: unknown) => [value]],
+  ])(
+    "tells anonymous recursive roots apart by `%s` values shaped like references",
+    (keyword, literal) => {
+      const components: OpenAPIV3_1.ComponentsObject = {};
+      const link = ($ref: string) =>
+        ({
+          properties: {
+            next: { $ref: "#" },
+            target: { [keyword]: literal({ $ref }), type: "object" },
+          },
+          type: "object",
+        }) as JSONSchema7;
+
+      const first = convertToOpenAPISchema(link("#/components/schemas/Root"), {
+        components,
+      });
+      const second = convertToOpenAPISchema(link("#"), { components });
+
+      expect(first).toEqual({ $ref: "#/components/schemas/Root" });
+      expect(second).toEqual({ $ref: "#/components/schemas/Root2" });
+      expect(components.schemas?.Root2).toEqual({
+        properties: {
+          next: { $ref: "#/components/schemas/Root2" },
+          target: { [keyword]: literal({ $ref: "#" }), type: "object" },
+        },
+        type: "object",
+      });
+    },
+  );
 
   it("rewrites draft-07 dependencies to the keywords JSON Schema 2020-12 splits them into", () => {
     const components: OpenAPIV3_1.ComponentsObject = {};
