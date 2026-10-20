@@ -401,4 +401,12 @@ describe("zod v4", () => {
       expect(output).toEqual({ $ref: "#/components/schemas/Root2" });
     });
   });
+  it("flattens a nullable union", async () => {
+    const schema = z.union([z.string(), z.number()]).nullable();
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
+    });
+  });
 });

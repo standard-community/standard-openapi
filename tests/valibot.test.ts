@@ -157,4 +157,44 @@ describe("valibot", () => {
       },
     });
   });
+
+  it("flattens a nullable union", async () => {
+    const schema = v.nullable(v.union([v.string(), v.number()]));
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
+    });
+  });
+
+  it("flattens an intersection of intersections", async () => {
+    const schema = v.intersect([
+      v.intersect([
+        v.object({ name: v.string() }),
+        v.object({ age: v.number() }),
+      ]),
+      v.object({ owner: v.string() }),
+    ]);
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      allOf: [
+        {
+          properties: { name: { type: "string" } },
+          required: ["name"],
+          type: "object",
+        },
+        {
+          properties: { age: { type: "number" } },
+          required: ["age"],
+          type: "object",
+        },
+        {
+          properties: { owner: { type: "string" } },
+          required: ["owner"],
+          type: "object",
+        },
+      ],
+    });
+  });
 });
