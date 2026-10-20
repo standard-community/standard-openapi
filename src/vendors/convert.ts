@@ -269,6 +269,30 @@ const convert = (
     delete _jsonSchema.$schema;
   }
 
+  // Draft-07's `dependencies` was split in JSON Schema 2020-12, the dialect of
+  // OpenAPI 3.1, into `dependentSchemas` for schema values and
+  // `dependentRequired` for property lists, and a 3.1 validator ignores it.
+  // Rewriting it keeps what it says, and its schemas are converted below.
+  const { dependencies } = _jsonSchema;
+  if (dependencies && typeof dependencies === "object") {
+    const entries = Object.entries<unknown>(dependencies);
+    const lists = entries.filter(([, value]) => Array.isArray(value));
+    const schemas = entries.filter(([, value]) => !Array.isArray(value));
+    if (schemas.length > 0) {
+      _jsonSchema.dependentSchemas = {
+        ...Object.fromEntries(schemas),
+        ..._jsonSchema.dependentSchemas,
+      };
+    }
+    if (lists.length > 0) {
+      _jsonSchema.dependentRequired = {
+        ...Object.fromEntries(lists),
+        ..._jsonSchema.dependentRequired,
+      };
+    }
+    delete _jsonSchema.dependencies;
+  }
+
   // Recursively process nested schemas
   const nestedSchemaKeys = [
     "properties",

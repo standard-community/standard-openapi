@@ -87,6 +87,51 @@ describe("convertToOpenAPISchema", () => {
     });
   });
 
+  it("rewrites draft-07 dependencies to the keywords JSON Schema 2020-12 splits them into", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const jsonSchema = {
+      $defs: {
+        Billing: {
+          properties: { address: { type: "string" } },
+          required: ["address"],
+          type: "object",
+        },
+      },
+      dependencies: {
+        card: { $ref: "#/$defs/Billing" },
+        coupon: ["campaign"],
+        gift: false,
+      },
+      type: "object",
+    };
+
+    const schema = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+      components,
+    });
+
+    expect(schema).toEqual({
+      dependentRequired: { coupon: ["campaign"] },
+      dependentSchemas: {
+        card: { $ref: "#/components/schemas/Billing" },
+        gift: false,
+      },
+      type: "object",
+    });
+    expect(components.schemas).toHaveProperty("Billing");
+  });
+
+  it("keeps a 2020-12 dependency over a draft-07 one for the same property", () => {
+    const jsonSchema = {
+      dependencies: { card: ["billing"] },
+      dependentRequired: { card: ["address"] },
+      type: "object",
+    };
+
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual({ dependentRequired: { card: ["address"] }, type: "object" });
+  });
+
   it("leaves anonymous nonrecursive schemas inline, including literal root references", () => {
     const components: OpenAPIV3_1.ComponentsObject = {};
     const schema = {
