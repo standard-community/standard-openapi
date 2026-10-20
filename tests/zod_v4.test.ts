@@ -367,4 +367,38 @@ describe("zod v4", () => {
       },
     });
   });
+  describe("an unnamed recursive schema converted again", () => {
+    const Node: z.ZodType<unknown> = z.object({
+      value: z.string().default("first"),
+      get next() {
+        return Node.optional();
+      },
+    });
+
+    it("reuses the component the first conversion created", async () => {
+      const components = {};
+
+      const { schema: first } = await toOpenAPISchema(Node, { components });
+      const { schema: second } = await toOpenAPISchema(Node, { components });
+
+      expect(second).toEqual(first);
+      expect(Object.keys(components)).toEqual(["schemas"]);
+      expect(Object.keys((components as { schemas: object }).schemas)).toEqual([
+        "Root",
+      ]);
+    });
+
+    it("gives a conversion that differs, such as for output, its own component", async () => {
+      const components = {};
+
+      const { schema: input } = await toOpenAPISchema(Node, { components });
+      const { schema: output } = await toOpenAPISchema(Node, {
+        components,
+        options: { io: "output" },
+      });
+
+      expect(input).toEqual({ $ref: "#/components/schemas/Root" });
+      expect(output).toEqual({ $ref: "#/components/schemas/Root2" });
+    });
+  });
 });

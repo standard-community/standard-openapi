@@ -100,6 +100,118 @@ const freeRootName = (
   return name;
 };
 
+/** Keywords whose value is a schema, or an array or a map of schemas. */
+const subschemaKeywords = [
+  "properties",
+  "additionalProperties",
+  "items",
+  "prefixItems",
+  "additionalItems",
+  "allOf",
+  "anyOf",
+  "oneOf",
+  "not",
+  "if",
+  "then",
+  "else",
+  "definitions",
+  "$defs",
+  "patternProperties",
+  "dependentSchemas",
+  "propertyNames",
+  "contains",
+  "contentSchema",
+  "unevaluatedProperties",
+  "unevaluatedItems",
+] as const;
+
+const schemaMapKeywords = new Set<string>([
+  "$defs",
+  "definitions",
+  "dependentSchemas",
+  "patternProperties",
+  "properties",
+]);
+
+/**
+ * `schema` with each of its direct subschemas replaced by what `map` returns
+ * for it, visited in keyword order. Every other keyword, such as `const` or
+ * `examples`, holds data rather than schemas, and is left as it is.
+ */
+const mapSubschemas = (
+  schema: Record<string, any>,
+  map: (subschema: any) => unknown,
+) => ({
+  ...schema,
+  ...Object.fromEntries(
+    subschemaKeywords
+      .filter(
+        (keyword) => schema[keyword] && typeof schema[keyword] === "object",
+      )
+      .map((keyword) => {
+        const value = schema[keyword];
+        if (schemaMapKeywords.has(keyword)) {
+          return [
+            keyword,
+            Object.fromEntries(
+              Object.entries(value).map(([key, entry]) => [key, map(entry)]),
+            ),
+          ];
+        }
+        return [keyword, Array.isArray(value) ? value.map(map) : map(value)];
+      }),
+  ),
+});
+
+/** What a root's references to itself are written as when comparing roots. */
+const SELF = "#self";
+
+/**
+ * `schema` with its references to the root, `self`, written as `SELF`. Only
+ * subschemas are visited, so data that looks like a reference, in a `const`
+ * say, still tells two roots apart.
+ */
+const withSelf = (schema: unknown, self: string): unknown => {
+  if (typeof schema !== "object" || schema === null) {
+    return schema;
+  }
+
+  const { $ref } = schema as OpenAPIV3_1.ReferenceObject;
+  return mapSubschemas(
+    $ref === self ? { ...schema, $ref: SELF } : schema,
+    (subschema) => withSelf(subschema, self),
+  );
+};
+
+/**
+ * A root schema as text, with its references to itself written the same way
+ * whatever it's named, and without its description, which each use of it
+ * carries on its own.
+ */
+const rootShape = (schema: unknown, self: string) => {
+  const { description: _, ...rest } = schema as OpenAPIV3_1.SchemaObject;
+  return JSON.stringify(withSelf(rest, self));
+};
+
+/**
+ * The generated root that already holds `schema`, an unnamed root whose
+ * references to itself are still `#`. Converting the same schema again, for
+ * another route say, gives the same content, while a conversion that differs,
+ * as the other direction can with a default, doesn't match.
+ */
+const matchingRoot = (
+  schema: OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject,
+  components: OpenAPIV3_1.ComponentsObject,
+) => {
+  const shape = rootShape(schema, "#");
+  return [...(generatedRoots.get(components)?.keys() ?? [])].find(
+    (name) =>
+      Object.hasOwn(components.schemas ?? {}, name) &&
+      rootShape(components.schemas?.[name], `#/components/schemas/${name}`) ===
+        shape,
+  );
+};
+
 /** Give an explicit component its name without overwriting an unnamed root. */
 const moveGeneratedRoot = (
   id: string,
@@ -216,15 +328,32 @@ export const convertToOpenAPISchema = (
     return schema;
   }
 
-  // Nested definitions have all been registered, so the generated root name
-  // cannot overwrite them or a component from an earlier conversion.
-  const name = freeRootName(context.components);
-  const reference = register(name, schema, context);
+  // The same unnamed schema converted again reuses its component rather than
+  // adding an identical one. Its description is a use's like any other, so
+  // `use` keeps it on the component while every use agrees on it. Nested
+  // definitions have all been registered, so a generated root name cannot
+  // overwrite them or a component from an earlier conversion.
+  const existing = matchingRoot(schema, context.components);
+  const name = existing ?? freeRootName(context.components);
+  const reference = existing
+    ? use(
+        existing,
+        (schema as OpenAPIV3_1.SchemaObject).description,
+        context.components,
+      ).reference
+    : register(name, schema, context);
+
+  // The references to the root, those in named definitions included, are still
+  // `#`, whether its component is new or reused.
   for (const use of document.rootReferences) {
     use.$ref = reference.$ref;
   }
   const roots = generatedRoots.get(context.components) ?? new Map();
-  roots.set(name, [reference, ...document.rootReferences]);
+  roots.set(name, [
+    ...(roots.get(name) ?? []),
+    reference,
+    ...document.rootReferences,
+  ]);
   generatedRoots.set(context.components, roots);
   return reference;
 };
@@ -348,75 +477,12 @@ const convert = (
   }
 
   // Recursively process nested schemas
-  const nestedSchemaKeys = [
-    "properties",
-    "additionalProperties",
-    "items",
-    "prefixItems",
-    "additionalItems",
-    "allOf",
-    "anyOf",
-    "oneOf",
-    "not",
-    "if",
-    "then",
-    "else",
-    "definitions",
-    "$defs",
-    "patternProperties",
-    "dependentSchemas",
-    "propertyNames",
-    "contains",
-    "contentSchema",
-    "unevaluatedProperties",
-    "unevaluatedItems",
-  ] as const;
-
-  nestedSchemaKeys.forEach((key) => {
-    if (
-      _jsonSchema[key] &&
-      (typeof _jsonSchema[key] === "object" || Array.isArray(_jsonSchema[key]))
-    ) {
-      if (
-        key === "properties" ||
-        key === "definitions" ||
-        key === "$defs" ||
-        key === "patternProperties" ||
-        key === "dependentSchemas"
-      ) {
-        // These are objects containing schemas
-        for (const subKey in _jsonSchema[key]) {
-          _jsonSchema[key][subKey] = convert(
-            _jsonSchema[key][subKey],
-            context,
-            document,
-          );
-        }
-      } else if (
-        key === "allOf" ||
-        key === "anyOf" ||
-        key === "oneOf" ||
-        key === "prefixItems"
-      ) {
-        // These are arrays of schemas
-        _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-          convert(item, context, document),
-        );
-      } else if (key === "items") {
-        // Items can be a schema or array of schemas
-        if (Array.isArray(_jsonSchema[key])) {
-          _jsonSchema[key] = _jsonSchema[key].map((item: any) =>
-            convert(item, context, document),
-          );
-        } else {
-          _jsonSchema[key] = convert(_jsonSchema[key], context, document);
-        }
-      } else {
-        // Single schema properties
-        _jsonSchema[key] = convert(_jsonSchema[key], context, document);
-      }
-    }
-  });
+  Object.assign(
+    _jsonSchema,
+    mapSubschemas(_jsonSchema, (subschema) =>
+      convert(subschema, context, document),
+    ),
+  );
 
   // Hoist any leftover `$defs`/`definitions` into the shared components and
   // strip them from the node. Some vendors (e.g. Effect Schema) emit a
