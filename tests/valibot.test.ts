@@ -43,6 +43,45 @@ describe("valibot", () => {
     expect(specs).toMatchSnapshot();
   });
 
+  it.each([
+    ["changes nothing", () => undefined, undefined],
+    [
+      "changes the schema",
+      ({ jsonSchema, valibotAction }: any) =>
+        valibotAction.type === "metadata"
+          ? { ...jsonSchema, title: "A pet" }
+          : undefined,
+      "A pet",
+    ],
+  ])(
+    "keeps `ref` and `example` metadata when an `overrideAction` %s",
+    async (_, overrideAction, title) => {
+      const Pet = v.pipe(
+        v.object({ name: v.string() }),
+        v.metadata({ example: { name: "Rex" }, ref: "Pet" }),
+      );
+      const components = {};
+
+      const { schema } = await toOpenAPISchema(Pet, {
+        components,
+        options: { overrideAction },
+      });
+
+      expect(schema).toEqual({ $ref: "#/components/schemas/Pet" });
+      expect(components).toEqual({
+        schemas: {
+          Pet: {
+            example: { name: "Rex" },
+            properties: { name: { type: "string" } },
+            required: ["name"],
+            ...(title ? { title } : {}),
+            type: "object",
+          },
+        },
+      });
+    },
+  );
+
   it("with nested metadata", async () => {
     const userSchema = v.pipe(
       v.object({
