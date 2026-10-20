@@ -434,6 +434,34 @@ const withoutNullable = ({ nullable, ...schema }: Record<string, any>) => {
   };
 };
 
+/**
+ * Replaces each member of an `allOf` or `anyOf` that holds nothing but the
+ * same keyword with that keyword's members, as both mean the same side by side.
+ * A member with anything beside it, such as its own description or a `$ref`,
+ * keeps its place.
+ * `oneOf` stays nested: a value matching every member of
+ * `{ oneOf: [{ oneOf: [a, b] }, c] }` is accepted, but `{ oneOf: [a, b, c] }`
+ * rejects it.
+ */
+const flatten = (keyword: string, members: unknown[]) => {
+  if (keyword !== "allOf" && keyword !== "anyOf") {
+    return members;
+  }
+
+  return members.flatMap((member) => {
+    if (typeof member !== "object" || member === null) {
+      return [member];
+    }
+
+    const nested = (member as Record<string, unknown>)[keyword];
+    return Array.isArray(nested) &&
+      nested.length > 0 &&
+      Object.keys(member).length === 1
+      ? nested
+      : [member];
+  });
+};
+
 const convert = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
@@ -483,6 +511,13 @@ const convert = (
       convert(subschema, context, document),
     ),
   );
+  // Members have been converted recursively before the wrappers are flattened.
+  for (const keyword of ["allOf", "anyOf"]) {
+    const members = _jsonSchema[keyword];
+    if (Array.isArray(members)) {
+      _jsonSchema[keyword] = flatten(keyword, members);
+    }
+  }
 
   // Hoist any leftover `$defs`/`definitions` into the shared components and
   // strip them from the node. Some vendors (e.g. Effect Schema) emit a

@@ -320,10 +320,7 @@ describe("convertToOpenAPISchema", () => {
         nullable: true,
       },
       {
-        anyOf: [
-          { anyOf: [{ type: "string" }, { type: "number" }] },
-          { type: "null" },
-        ],
+        anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }],
         description: "A name or a number",
       },
     ],
@@ -394,5 +391,105 @@ describe("convertToOpenAPISchema", () => {
         { components: {} },
       ),
     ).toEqual({ type: "string" });
+  });
+
+  it.each<[string, Record<string, unknown>, Record<string, unknown>]>([
+    [
+      "a union of unions",
+      {
+        anyOf: [
+          { anyOf: [{ type: "string" }, { anyOf: [{ type: "number" }] }] },
+          { type: "null" },
+        ],
+      },
+      { anyOf: [{ type: "string" }, { type: "number" }, { type: "null" }] },
+    ],
+    [
+      "an intersection of intersections",
+      {
+        allOf: [
+          { allOf: [{ required: ["name"] }, { required: ["age"] }] },
+          { required: ["owner"] },
+        ],
+      },
+      {
+        allOf: [
+          { required: ["name"] },
+          { required: ["age"] },
+          { required: ["owner"] },
+        ],
+      },
+    ],
+  ])("flattens %s", (_, jsonSchema, expected) => {
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual(expected);
+  });
+
+  it.each<[string, Record<string, unknown>]>([
+    [
+      "a member with its own description",
+      {
+        anyOf: [
+          {
+            anyOf: [{ type: "string" }, { type: "number" }],
+            description: "An identifier",
+          },
+          { type: "null" },
+        ],
+      },
+    ],
+    [
+      "exclusive alternatives",
+      {
+        oneOf: [
+          { oneOf: [{ type: "string" }, { type: "number" }] },
+          { type: "null" },
+        ],
+      },
+    ],
+    [
+      "a union inside an intersection",
+      {
+        allOf: [
+          { anyOf: [{ required: ["name"] }, { required: ["company"] }] },
+          { required: ["owner"] },
+        ],
+      },
+    ],
+    [
+      "an intersection inside a union",
+      {
+        anyOf: [
+          { allOf: [{ required: ["name"] }, { required: ["age"] }] },
+          { required: ["owner"] },
+        ],
+      },
+    ],
+  ])("keeps %s nested", (_, jsonSchema) => {
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual(jsonSchema);
+  });
+
+  it("keeps a reference to a named union as one member", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const jsonSchema = {
+      anyOf: [
+        { anyOf: [{ type: "string" }, { type: "number" }], ref: "Id" },
+        { type: "null" },
+      ],
+    };
+
+    const schema = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+      components,
+    });
+
+    expect(schema).toEqual({
+      anyOf: [{ $ref: "#/components/schemas/Id" }, { type: "null" }],
+    });
+    expect(components.schemas).toEqual({
+      Id: { anyOf: [{ type: "string" }, { type: "number" }] },
+    });
   });
 });
