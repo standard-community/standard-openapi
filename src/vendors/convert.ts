@@ -229,6 +229,82 @@ export const convertToOpenAPISchema = (
   return reference;
 };
 
+/**
+ * Keywords that describe a schema rather than restrict the values it accepts,
+ * along with the definitions it carries and the name vendors give it.
+ */
+const annotationKeywords = new Set([
+  "$comment",
+  "$defs",
+  "$id",
+  "$schema",
+  "default",
+  "definitions",
+  "deprecated",
+  "description",
+  "example",
+  "examples",
+  "externalDocs",
+  "readOnly",
+  "ref",
+  "title",
+  "writeOnly",
+  "xml",
+]);
+
+const isAnnotation = (keyword: string) =>
+  annotationKeywords.has(keyword) || keyword.startsWith("x-");
+
+// Keywords that apply to values of every type, so `null` has to satisfy them
+// too, whatever `type` says.
+const typeIndependentKeywords = [
+  "$ref",
+  "allOf",
+  "anyOf",
+  "const",
+  "if",
+  "not",
+  "oneOf",
+];
+
+/**
+ * Turns OpenAPI 3.0's `nullable` into the JSON Schema that OpenAPI 3.1 uses.
+ * When only `type` and `enum` can reject `null`, `null` joins whichever of them
+ * the schema has; with neither, it accepts `null` already. Otherwise the
+ * schema's restrictions become one alternative and `null` the other, and its
+ * annotations stay on the whole.
+ */
+const withoutNullable = ({ nullable, ...schema }: Record<string, any>) => {
+  if (nullable !== true) {
+    return schema;
+  }
+
+  // Apart from `type` and `enum`, every keyword left applies to values of one
+  // type only, so `null` passes it.
+  if (
+    !typeIndependentKeywords.some((keyword) => Object.hasOwn(schema, keyword))
+  ) {
+    const types = schema.type === undefined ? [] : [schema.type].flat();
+    return {
+      ...schema,
+      ...(Array.isArray(schema.enum) && !schema.enum.includes(null)
+        ? { enum: [...schema.enum, null] }
+        : {}),
+      ...(types.length > 0 && !types.includes("null")
+        ? { type: [...types, "null"] }
+        : {}),
+    };
+  }
+
+  const entries = Object.entries(schema);
+  const restrictions = entries.filter(([keyword]) => !isAnnotation(keyword));
+
+  return {
+    ...Object.fromEntries(entries.filter(([keyword]) => isAnnotation(keyword))),
+    anyOf: [Object.fromEntries(restrictions), { type: "null" }],
+  };
+};
+
 const convert = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
@@ -240,29 +316,7 @@ const convert = (
     return jsonSchema;
   }
 
-  const _jsonSchema = JSON.parse(JSON.stringify(jsonSchema));
-
-  // Handle nullable property conversion
-  if ("nullable" in _jsonSchema && _jsonSchema.nullable === true) {
-    if (_jsonSchema.type) {
-      // Convert type + nullable to type array
-      if (Array.isArray(_jsonSchema.type)) {
-        // If type is already an array, add null if not present
-        if (!_jsonSchema.type.includes("null")) {
-          _jsonSchema.type.push("null");
-        }
-      } else {
-        // Convert single type to array with null
-        _jsonSchema.type = [_jsonSchema.type, "null"];
-      }
-    } else {
-      // If no type specified but nullable is true, add null type
-      _jsonSchema.type = ["null"];
-    }
-
-    // Remove the nullable property
-    delete _jsonSchema.nullable;
-  }
+  const _jsonSchema = withoutNullable(JSON.parse(JSON.stringify(jsonSchema)));
 
   // Remove $schema reference if present
   if (_jsonSchema.$schema) {
