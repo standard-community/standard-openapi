@@ -44,6 +44,39 @@ describe("convertToOpenAPISchema", () => {
     ).toEqual(jsonSchema);
   });
 
+  it("keeps values that JSON can't hold", () => {
+    const jsonSchema = {
+      properties: {
+        count: { default: 10n, type: "integer" },
+        ratio: { maximum: Infinity, type: "number" },
+      },
+      type: "object",
+    };
+
+    expect(
+      convertToOpenAPISchema(jsonSchema as unknown as JSONSchema7, {
+        components: {},
+      }),
+    ).toEqual(jsonSchema);
+  });
+
+  it("leaves out functions and leaves the schema it's given as it is", () => {
+    const jsonSchema = {
+      nullable: true,
+      properties: { name: { transform: () => "", type: "string" } },
+      type: "object",
+    };
+
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual({
+      properties: { name: { type: "string" } },
+      type: ["object", "null"],
+    });
+    expect(jsonSchema.nullable).toBe(true);
+    expect(jsonSchema.properties.name.transform).toBeTypeOf("function");
+  });
+
   it("registers anonymous recursive roots without taking existing or nested names", () => {
     const components: OpenAPIV3_1.ComponentsObject = {
       schemas: { Root: { type: "string" } },

@@ -313,6 +313,31 @@ const register = (
   return reference;
 };
 
+/**
+ * A copy of a schema that converting can change in place. Like a round trip
+ * through JSON, it leaves out functions and copies an object used in several
+ * places once per place, but it keeps values JSON can't hold, like `Infinity`.
+ */
+const copy = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(copy);
+  }
+
+  const prototype =
+    typeof value === "object" && value !== null
+      ? Object.getPrototypeOf(value)
+      : undefined;
+  if (prototype !== Object.prototype && prototype !== null) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value as object).flatMap(([key, entry]) =>
+      typeof entry === "function" ? [] : [[key, copy(entry)]],
+    ),
+  );
+};
+
 export const convertToOpenAPISchema = (
   jsonSchema: JSONSchema7,
   context: ToOpenAPISchemaContext,
@@ -323,7 +348,8 @@ export const convertToOpenAPISchema = (
   for (const name of names) {
     moveGeneratedRoot(name, context.components, names);
   }
-  const schema = convert(jsonSchema, context, document);
+  // Copied once here, as converting changes each subschema in place.
+  const schema = convert(copy(jsonSchema) as JSONSchema7, context, document);
   if (document.rootReferences.length === 0) {
     return schema;
   }
@@ -473,7 +499,7 @@ const convert = (
     return jsonSchema;
   }
 
-  const _jsonSchema = withoutNullable(JSON.parse(JSON.stringify(jsonSchema)));
+  const _jsonSchema = withoutNullable(jsonSchema as Record<string, any>);
 
   // Remove $schema reference if present
   if (_jsonSchema.$schema) {
