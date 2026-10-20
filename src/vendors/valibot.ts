@@ -13,7 +13,7 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
       errorMode: "ignore",
       // A pipe that transforms its input is otherwise described by whichever
       // schema comes last, so it describes the input, like the `zod` vendors.
-      typeMode: "input",
+      typeMode: context.io ?? "input",
       ...options,
       // @ts-expect-error
       overrideAction: (actionContext) => {

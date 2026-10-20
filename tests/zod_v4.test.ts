@@ -31,6 +31,25 @@ describe("zod v4", () => {
     expect(specs).toMatchSnapshot();
   });
 
+  it.each([
+    ["the input by default", {}, {}],
+    [
+      'the output with `io: "output"`',
+      { io: "output" as const },
+      { additionalProperties: false, required: ["size"] },
+    ],
+  ])("describes %s", async (_, context, output) => {
+    const Order = z.object({ size: z.string().default("small") });
+
+    const { schema } = await toOpenAPISchema(Order, context);
+
+    expect(schema).toEqual({
+      properties: { size: { default: "small", type: "string" } },
+      type: "object",
+      ...output,
+    });
+  });
+
   it("preserves external $ref URLs", async () => {
     const schema = z
       .object({

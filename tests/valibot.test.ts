@@ -52,6 +52,30 @@ describe("valibot", () => {
     });
   });
 
+  it.each([
+    ['describes its output with `io: "output"`', {}, "number"],
+    [
+      "lets its own `typeMode` win over `io`",
+      { options: { typeMode: "input" } },
+      "string",
+    ],
+  ])("%s", async (_, context, type) => {
+    const Order = v.object({
+      quantity: v.pipe(v.string(), v.transform(Number), v.number()),
+    });
+
+    const { schema } = await toOpenAPISchema(Order, {
+      io: "output",
+      ...context,
+    });
+
+    expect(schema).toEqual({
+      properties: { quantity: { type } },
+      required: ["quantity"],
+      type: "object",
+    });
+  });
+
   it("with metadata", async () => {
     const schema = v.pipe(
       v.object({

@@ -10,7 +10,7 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
     if ("_zod" in (schema as $ZodType | ZodTypeAny)) {
       return getDefaultToOpenAPISchemaFn()(schema, {
         components: context.components,
-        options: { io: "input", ...context.options },
+        options: { io: context.io ?? "input", ...context.options },
       });
     }
 
@@ -23,7 +23,7 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
     const { schema: _schema, components } = createSchema(
       // @ts-expect-error
       schema,
-      { schemaType: "input", ...context.options },
+      { schemaType: context.io ?? "input", ...context.options },
     );
 
     if (components) {
