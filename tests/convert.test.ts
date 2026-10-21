@@ -525,4 +525,109 @@ describe("convertToOpenAPISchema", () => {
       Id: { anyOf: [{ type: "string" }, { type: "number" }] },
     });
   });
+
+  it("names a definition under a numbered key and shares it when converted again", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // valibot numbers the definitions it has no name for, counting on across
+    // conversions, so the same schema comes back under another key.
+    const list = (key: string) =>
+      ({
+        $defs: {
+          [key]: {
+            properties: {
+              next: { $ref: `#/$defs/${key}` },
+              value: { type: "string" },
+            },
+            type: "object",
+          },
+        },
+        properties: { head: { $ref: `#/$defs/${key}` } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(list("0"), { components });
+    const second = convertToOpenAPISchema(list("1"), { components });
+
+    const expected = {
+      properties: { head: { $ref: "#/components/schemas/Schema" } },
+      type: "object",
+    };
+    expect(first).toEqual(expected);
+    expect(second).toEqual(expected);
+    expect(components.schemas).toEqual({
+      Schema: {
+        properties: {
+          next: { $ref: "#/components/schemas/Schema" },
+          value: { type: "string" },
+        },
+        type: "object",
+      },
+    });
+  });
+
+  it("moves a lifted definition with a root that refers to it when its name is claimed later", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const note = {
+      properties: { text: { type: "string" } },
+      type: "object",
+    } as const;
+
+    const result = convertToOpenAPISchema(
+      { $defs: { __schema0: note }, $ref: "#/$defs/__schema0" } as JSONSchema7,
+      { components },
+    );
+    convertToOpenAPISchema(
+      {
+        properties: { label: { type: "string" } },
+        ref: "Schema",
+        type: "object",
+      } as JSONSchema7,
+      { components },
+    );
+
+    expect(result).toEqual({ $ref: "#/components/schemas/Schema2" });
+    expect(components.schemas).toEqual({
+      Schema: { properties: { label: { type: "string" } }, type: "object" },
+      Schema2: note,
+    });
+  });
+
+  it("moves a lifted definition with every use of it, shared ones included, when its name is claimed later", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const note = {
+      properties: { text: { type: "string" } },
+      type: "object",
+    } as const;
+    const root = { $defs: { __schema0: note }, $ref: "#/$defs/__schema0" };
+    const property = {
+      $defs: { __schema0: note },
+      properties: { note: { $ref: "#/$defs/__schema0" } },
+      type: "object",
+    };
+
+    const first = convertToOpenAPISchema(root as JSONSchema7, { components });
+    const second = convertToOpenAPISchema(root as JSONSchema7, { components });
+    const third = convertToOpenAPISchema(property as JSONSchema7, {
+      components,
+    });
+    convertToOpenAPISchema(
+      {
+        properties: { label: { type: "string" } },
+        ref: "Schema",
+        type: "object",
+      } as JSONSchema7,
+      { components },
+    );
+
+    expect(first).toEqual({ $ref: "#/components/schemas/Schema2" });
+    expect(second).toEqual({ $ref: "#/components/schemas/Schema2" });
+    expect(third).toEqual({
+      properties: { note: { $ref: "#/components/schemas/Schema2" } },
+      type: "object",
+    });
+    expect(components.schemas).toEqual({
+      Schema: { properties: { label: { type: "string" } }, type: "object" },
+      Schema2: note,
+    });
+  });
 });
