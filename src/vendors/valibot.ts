@@ -1,6 +1,5 @@
 import { toJsonSchema } from "@standard-community/standard-json";
 import type { ConversionConfig } from "@valibot/to-json-schema";
-import type { OpenAPIV3_1 } from "openapi-types";
 import { convertToOpenAPISchema } from "./convert.js";
 import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
 
@@ -58,9 +57,6 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
     // The actions above were converted on their own, but whatever the
     // converter does to a whole schema, like moving `$defs` into the
     // components, has to happen to the result too.
-    return convertToOpenAPISchema(
-      openapiSchema,
-      context,
-    ) as OpenAPIV3_1.SchemaObject;
+    return convertToOpenAPISchema(openapiSchema, context);
   };
 }
