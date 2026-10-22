@@ -264,6 +264,50 @@ describe("convertToOpenAPISchema", () => {
     ).toEqual({ dependentRequired: { card: ["address"] }, type: "object" });
   });
 
+  it.each([
+    ["any further items", { type: "boolean" }, { items: { type: "boolean" } }],
+    ["no further items", false, { items: false }],
+    ["further items left open", undefined, {}],
+  ])(
+    "rewrites a draft-07 tuple with %s to the keywords JSON Schema 2020-12 moved it to",
+    (_, additionalItems, rest) => {
+      const components: OpenAPIV3_1.ComponentsObject = {};
+      const jsonSchema = {
+        $defs: {
+          Pet: { properties: { name: { type: "string" } }, type: "object" },
+        },
+        additionalItems,
+        items: [{ type: "string" }, { $ref: "#/$defs/Pet" }],
+        minItems: 2,
+        type: "array",
+      };
+
+      const schema = convertToOpenAPISchema(jsonSchema as JSONSchema7, {
+        components,
+      });
+
+      expect(schema).toEqual({
+        ...rest,
+        minItems: 2,
+        prefixItems: [{ type: "string" }, { $ref: "#/components/schemas/Pet" }],
+        type: "array",
+      });
+      expect(components.schemas).toHaveProperty("Pet");
+    },
+  );
+
+  it("keeps 2020-12 `prefixItems` over a draft-07 tuple's `items`", () => {
+    const jsonSchema = {
+      items: [{ type: "number" }],
+      prefixItems: [{ type: "string" }],
+      type: "array",
+    };
+
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual({ prefixItems: [{ type: "string" }], type: "array" });
+  });
+
   it("leaves anonymous nonrecursive schemas inline, including literal root references", () => {
     const components: OpenAPIV3_1.ComponentsObject = {};
     const schema = {

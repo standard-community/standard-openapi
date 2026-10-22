@@ -530,6 +530,21 @@ const convert = (
     delete _jsonSchema.dependencies;
   }
 
+  // Up to 2019-09, a tuple lists the schema for each position in an
+  // array-valued `items`, and the one for any items after them in
+  // `additionalItems`. JSON Schema 2020-12 moved these to `prefixItems` and
+  // `items`, which can't be an array there, and a 3.1 validator ignores
+  // `additionalItems`. Their schemas are converted below too.
+  const { additionalItems, items } = _jsonSchema;
+  if (Array.isArray(items)) {
+    _jsonSchema.prefixItems ??= items;
+    delete _jsonSchema.items;
+    delete _jsonSchema.additionalItems;
+    if (additionalItems !== undefined) {
+      _jsonSchema.items = additionalItems;
+    }
+  }
+
   // Recursively process nested schemas
   Object.assign(
     _jsonSchema,

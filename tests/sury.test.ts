@@ -30,4 +30,16 @@ describe("sury", () => {
     const specs = await toOpenAPISchema(schema);
     expect(specs).toMatchSnapshot();
   });
+
+  it("describes a tuple with the keywords of JSON Schema 2020-12", async () => {
+    const schema = S.schema([S.string, S.number]);
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      maxItems: 2,
+      minItems: 2,
+      prefixItems: [{ type: "string" }, { type: "number" }],
+      type: "array",
+    });
+  });
 });

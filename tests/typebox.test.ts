@@ -65,4 +65,16 @@ describe("typebox", () => {
       ],
     });
   });
+
+  it("describes a tuple with the keywords of JSON Schema 2020-12", async () => {
+    const schema = Type.Tuple([Type.String(), Type.Number()]);
+
+    const { schema: openapiSchema } = await toOpenAPISchema(Compile(schema));
+    expect(openapiSchema).toEqual({
+      items: false,
+      minItems: 2,
+      prefixItems: [{ type: "string" }, { type: "number" }],
+      type: "array",
+    });
+  });
 });
