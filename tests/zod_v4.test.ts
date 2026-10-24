@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import type { OpenAPIV3_1 } from "openapi-types";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import z from "zod/v4";
 
 import { toOpenAPISchema } from "~/index.js";
@@ -29,6 +30,17 @@ describe("zod v4", () => {
 
     const specs = await toOpenAPISchema(schema);
     expect(specs).toMatchSnapshot();
+  });
+
+  it("types a named schema's result as the reference it is", async () => {
+    const Pet = z.object({ name: z.string() }).meta({ ref: "Pet" });
+
+    const { schema } = await toOpenAPISchema(Pet);
+
+    expectTypeOf(schema).toEqualTypeOf<
+      OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject
+    >();
+    expect("$ref" in schema && schema.$ref).toBe("#/components/schemas/Pet");
   });
 
   it.each([

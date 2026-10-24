@@ -17,10 +17,15 @@ export type ToOpenAPISchemaContext = {
   options?: Record<string, unknown>;
 };
 
+/** A named schema converts to a reference to its component. */
+export type SchemaOrReference =
+  | OpenAPIV3_1.SchemaObject
+  | OpenAPIV3_1.ReferenceObject;
+
 export type ToOpenAPISchemaFn = (
   schema: StandardSchemaV1,
   context: ToOpenAPISchemaContext,
-) => OpenAPIV3_1.SchemaObject | Promise<OpenAPIV3_1.SchemaObject>;
+) => SchemaOrReference | Promise<SchemaOrReference>;
 
 export const errorMessageWrapper = (message: string) =>
   `standard-openapi: ${message}`;

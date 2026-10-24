@@ -1,8 +1,11 @@
-import type { OpenAPIV3_1 } from "openapi-types";
 import type { ZodTypeAny } from "zod/v3";
 import type { $ZodType } from "zod/v4/core";
 import getDefaultToOpenAPISchemaFn from "./default.js";
-import { errorMessageWrapper, type ToOpenAPISchemaFn } from "./utils.js";
+import {
+  errorMessageWrapper,
+  type SchemaOrReference,
+  type ToOpenAPISchemaFn,
+} from "./utils.js";
 
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) => {
@@ -34,6 +37,6 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
       };
     }
 
-    return _schema as OpenAPIV3_1.SchemaObject;
+    return _schema as SchemaOrReference;
   };
 }
