@@ -221,4 +221,16 @@ describe("valibot", () => {
       ],
     });
   });
+
+  it("describes a tuple with the keywords of JSON Schema 2020-12", async () => {
+    const schema = v.tupleWithRest([v.string(), v.number()], v.boolean());
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      items: { type: "boolean" },
+      minItems: 2,
+      prefixItems: [{ type: "string" }, { type: "number" }],
+      type: "array",
+    });
+  });
 });

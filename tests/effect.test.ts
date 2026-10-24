@@ -108,4 +108,18 @@ describe("effect", () => {
       (components?.schemas?.Bar as { $ref?: string }).$ref,
     ).toBeUndefined();
   });
+
+  it("describes a tuple with the keywords of JSON Schema 2020-12", async () => {
+    const schema = Schema.standardSchemaV1(
+      Schema.Tuple([Schema.String, Schema.Number], Schema.Boolean),
+    );
+
+    const { schema: openapiSchema } = await toOpenAPISchema(schema);
+    expect(openapiSchema).toEqual({
+      items: { type: "boolean" },
+      minItems: 2,
+      prefixItems: [{ type: "string" }, { type: "number" }],
+      type: "array",
+    });
+  });
 });
