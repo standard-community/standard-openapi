@@ -432,6 +432,32 @@ describe("zod v4", () => {
       expect(output).toEqual({ $ref: "#/components/schemas/Root2" });
     });
   });
+  describe("a schema named with `id`", () => {
+    const Pet = z.object({ name: z.string() }).meta({ id: "Pet" });
+    const component = {
+      properties: { name: { type: "string" } },
+      required: ["name"],
+      type: "object",
+    };
+
+    it("is a component at the root", async () => {
+      const { schema, components } = await toOpenAPISchema(Pet);
+
+      expect(schema).toEqual({ $ref: "#/components/schemas/Pet" });
+      expect(components?.schemas).toEqual({ Pet: component });
+    });
+
+    it("is a component without its `id` when nested", async () => {
+      const { schema, components } = await toOpenAPISchema(
+        z.object({ pet: Pet }),
+      );
+
+      expect(schema).toMatchObject({
+        properties: { pet: { $ref: "#/components/schemas/Pet" } },
+      });
+      expect(components?.schemas).toEqual({ Pet: component });
+    });
+  });
   it("flattens a nullable union", async () => {
     const schema = z.union([z.string(), z.number()]).nullable();
 

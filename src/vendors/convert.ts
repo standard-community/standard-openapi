@@ -17,16 +17,29 @@ type SchemaDocument = {
   descriptions: Record<string, string>;
 };
 
+/**
+ * The keywords a vendor names a schema with: `ref`, `$id`, or `id`, which is
+ * where Zod 4 writes the name given with `.meta({ id })`.
+ */
+const nameKeywords = ["ref", "$id", "id"] as const;
+
+const nameOf = (schema: unknown): string | undefined =>
+  nameKeywords
+    .map(
+      (keyword) => (schema as Record<string, unknown> | undefined)?.[keyword],
+    )
+    .find((name): name is string => typeof name === "string" && name !== "");
+
 const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
-  const { $defs, $id, definitions, ref } = jsonSchema as Record<string, any>;
+  const { $defs, definitions } = jsonSchema as Record<string, any>;
 
   const named = Object.entries<any>({ ...definitions, ...$defs }).flatMap(
     ([key, entry]) => {
-      const name = entry?.ref ?? entry?.$id;
-      return typeof name === "string" ? [{ entry, key, name }] : [];
+      const name = nameOf(entry);
+      return name ? [{ entry, key, name }] : [];
     },
   );
-  const root = ref ?? $id;
+  const root = nameOf(jsonSchema);
 
   const descriptions = Object.fromEntries(
     [...named, ...(root ? [{ entry: jsonSchema, name: root }] : [])].flatMap(
@@ -400,6 +413,7 @@ const annotationKeywords = new Set([
   "example",
   "examples",
   "externalDocs",
+  "id",
   "readOnly",
   "ref",
   "title",
@@ -575,11 +589,16 @@ const convert = (
     delete _jsonSchema.definitions;
   }
 
-  // If a ref is provided, use it to create a $ref in the OpenAPI components
-  if (_jsonSchema.ref || _jsonSchema.$id) {
-    const { ref, $id, ...component } = _jsonSchema;
+  // If a name is provided, use it to create a $ref in the OpenAPI components
+  const name = nameOf(_jsonSchema);
+  if (name) {
+    const component = Object.fromEntries(
+      Object.entries(_jsonSchema).filter(
+        ([keyword]) => !(nameKeywords as readonly string[]).includes(keyword),
+      ),
+    );
 
-    return register(ref || $id, component, context);
+    return register(name, component, context);
   } else if (_jsonSchema.$ref) {
     // The referenced definitions were already hoisted from `$defs` above.
     const { $ref, ...rest } = _jsonSchema;
