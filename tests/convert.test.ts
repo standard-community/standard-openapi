@@ -674,4 +674,45 @@ describe("convertToOpenAPISchema", () => {
       Schema2: note,
     });
   });
+
+  it("keeps a lifted definition and an anonymous root of the same shape apart, each with its own description", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const list = {
+      $defs: {
+        __schema0: {
+          description: "A node in a list",
+          properties: { next: { $ref: "#/$defs/__schema0" } },
+          type: "object",
+        },
+      },
+      properties: { head: { $ref: "#/$defs/__schema0" } },
+      type: "object",
+    };
+    const node = {
+      description: "A node on its own",
+      properties: { next: { $ref: "#" } },
+      type: "object",
+    };
+
+    const first = convertToOpenAPISchema(list as JSONSchema7, { components });
+    const second = convertToOpenAPISchema(node as JSONSchema7, { components });
+
+    expect(first).toEqual({
+      properties: { head: { $ref: "#/components/schemas/Schema" } },
+      type: "object",
+    });
+    expect(second).toEqual({ $ref: "#/components/schemas/Root" });
+    expect(components.schemas).toEqual({
+      Root: {
+        description: "A node on its own",
+        properties: { next: { $ref: "#/components/schemas/Root" } },
+        type: "object",
+      },
+      Schema: {
+        description: "A node in a list",
+        properties: { next: { $ref: "#/components/schemas/Schema" } },
+        type: "object",
+      },
+    });
+  });
 });

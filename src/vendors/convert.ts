@@ -263,18 +263,23 @@ const rootShape = (schema: unknown, self: string) => {
  * references to itself are still `#`. Converting the same schema again, for
  * another route say, gives the same content, while a conversion that differs,
  * as the other direction can with a default, doesn't match.
+ *
+ * Only roots are candidates. A lifted definition's description is its own, also
+ * where it refers to itself inside its component, so a root sharing that
+ * component would either take on that description or lose its own.
  */
 const matchingRoot = (
   schema: OpenAPIV3_1.SchemaObject | OpenAPIV3_1.ReferenceObject,
   components: OpenAPIV3_1.ComponentsObject,
 ) => {
   const shape = rootShape(schema, "#");
-  return [...(generatedRoots.get(components)?.keys() ?? [])].find(
-    (name) =>
+  return [...(generatedRoots.get(components) ?? [])].find(
+    ([name, { base }]) =>
+      base === "Root" &&
       Object.hasOwn(components.schemas ?? {}, name) &&
       rootShape(components.schemas?.[name], `#/components/schemas/${name}`) ===
         shape,
-  );
+  )?.[0];
 };
 
 /**
