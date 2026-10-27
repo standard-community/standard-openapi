@@ -71,10 +71,9 @@ describe("effect", () => {
       expect.arrayContaining(["Item", "Foo", "Bar"]),
     );
     expect(components?.schemas?.Item).toMatchObject({ type: "object" });
-    expect(
-      (components?.schemas?.Item as { properties: Record<string, unknown> })
-        .properties.foo,
-    ).toEqual({ $ref: "#/components/schemas/Foo" });
+    expect(components?.schemas?.Item).toHaveProperty("properties.foo", {
+      $ref: "#/components/schemas/Foo",
+    });
   });
 
   it("does not clobber ref-annotated components with $ref stubs", async () => {
@@ -101,12 +100,8 @@ describe("effect", () => {
       type: "object",
       properties: { baz: { type: "number" } },
     });
-    expect(
-      (components?.schemas?.Item as { $ref?: string }).$ref,
-    ).toBeUndefined();
-    expect(
-      (components?.schemas?.Bar as { $ref?: string }).$ref,
-    ).toBeUndefined();
+    expect(components?.schemas?.Item).not.toHaveProperty("$ref");
+    expect(components?.schemas?.Bar).not.toHaveProperty("$ref");
   });
 
   it("describes a tuple with the keywords of JSON Schema 2020-12", async () => {
