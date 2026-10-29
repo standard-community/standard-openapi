@@ -232,21 +232,28 @@ const mapSubschemas = (
 const SELF = "#self";
 
 /**
- * `schema` with its references to the root, `self`, written as `SELF`. Only
- * subschemas are visited, so data that looks like a reference, in a `const`
- * say, still tells two roots apart.
+ * `schema` with each of its references replaced by what `map` returns for it.
+ * Only subschemas are visited, so data that looks like a reference, in a
+ * `const` say, still tells two schemas apart.
  */
-const withSelf = (schema: unknown, self: string): unknown => {
+const mapReferences = (
+  schema: unknown,
+  map: (ref: string) => string,
+): unknown => {
   if (typeof schema !== "object" || schema === null) {
     return schema;
   }
 
   const { $ref } = schema as OpenAPIV3_1.ReferenceObject;
   return mapSubschemas(
-    $ref === self ? { ...schema, $ref: SELF } : schema,
-    (subschema) => withSelf(subschema, self),
+    typeof $ref === "string" ? { ...schema, $ref: map($ref) } : schema,
+    (subschema) => mapReferences(subschema, map),
   );
 };
+
+/** `schema` with its references to the root, `self`, written as `SELF`. */
+const withSelf = (schema: unknown, self: string) =>
+  mapReferences(schema, (ref) => (ref === self ? SELF : ref));
 
 /**
  * A root schema as text, with its references to itself written the same way
@@ -343,13 +350,14 @@ const member = (index: number) => `#group/${index}`;
  * are named.
  */
 const groupShape = (schemas: unknown[], memberOf: (ref: string) => number) =>
-  JSON.stringify(schemas, (key, value) => {
-    if (key !== "$ref" || typeof value !== "string") {
-      return value;
-    }
-    const index = memberOf(value);
-    return index === -1 ? value : member(index);
-  });
+  JSON.stringify(
+    schemas.map((schema) =>
+      mapReferences(schema, (ref) => {
+        const index = memberOf(ref);
+        return index === -1 ? ref : member(index);
+      }),
+    ),
+  );
 
 /** Every object inside `value`, `value` included. */
 const objectsIn = (value: unknown) => {
