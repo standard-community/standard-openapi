@@ -785,4 +785,45 @@ describe("convertToOpenAPISchema", () => {
       Schema3: { const: { $ref: "#group/0" } },
     });
   });
+
+  it("shares definitions that refer to each other alike when converted again", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // Visiting either definition reaches the other, whichever comes first.
+    const pair = () =>
+      ({
+        $defs: {
+          __schema0: {
+            properties: { next: { $ref: "#/$defs/__schema1" } },
+            type: "object",
+          },
+          __schema1: {
+            properties: { next: { $ref: "#/$defs/__schema0" } },
+            type: "object",
+          },
+        },
+        properties: { pet: { $ref: "#/$defs/__schema0" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const results = [pair(), pair(), pair()].map((jsonSchema) =>
+      convertToOpenAPISchema(jsonSchema, { components }),
+    );
+
+    results.forEach((result) => {
+      expect(result).toEqual({
+        properties: { pet: { $ref: "#/components/schemas/Schema" } },
+        type: "object",
+      });
+    });
+    expect(components.schemas).toEqual({
+      Schema: {
+        properties: { next: { $ref: "#/components/schemas/Schema2" } },
+        type: "object",
+      },
+      Schema2: {
+        properties: { next: { $ref: "#/components/schemas/Schema" } },
+        type: "object",
+      },
+    });
+  });
 });

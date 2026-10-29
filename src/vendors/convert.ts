@@ -424,7 +424,12 @@ const liftingGroups = (
       groups.push(keys.filter((candidate) => group.includes(candidate)));
     }
   };
-  keys.filter((key) => !index.has(key)).forEach(visit);
+  // A visit reaches the keys after it too, so each is checked when its turn comes.
+  keys.forEach((key) => {
+    if (!index.has(key)) {
+      visit(key);
+    }
+  });
   return groups;
 };
 
