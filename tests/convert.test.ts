@@ -715,4 +715,115 @@ describe("convertToOpenAPISchema", () => {
       },
     });
   });
+
+  it("shares a definition that refers to one placed after it when converted again", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // valibot numbers the definitions it has no name for, and numbered keys
+    // come before every other key, so this one is placed before `Pet`.
+    const list = (key: string) =>
+      ({
+        $defs: {
+          Pet: { properties: { name: { type: "string" } }, type: "object" },
+          [key]: {
+            properties: {
+              next: { $ref: `#/$defs/${key}` },
+              pet: { $ref: "#/$defs/Pet" },
+            },
+            type: "object",
+          },
+        },
+        properties: { head: { $ref: `#/$defs/${key}` } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(list("0"), { components });
+    const second = convertToOpenAPISchema(list("1"), { components });
+
+    expect(second).toEqual(first);
+    expect(Object.keys(components.schemas ?? {}).toSorted()).toEqual([
+      "Pet",
+      "Schema",
+    ]);
+  });
+
+  it("keeps definitions that refer to each other apart when only data that looks like a reference differs", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // `const` holds data, so a `$ref` in it is compared as it's written.
+    const thread = (literal: string) =>
+      ({
+        $defs: {
+          __schema0: {
+            const: { $ref: literal },
+            properties: { reply: { $ref: "#/$defs/__schema1" } },
+            type: "object",
+          },
+          __schema1: {
+            properties: { note: { $ref: "#/$defs/__schema0" } },
+            type: "object",
+          },
+        },
+        properties: { first: { $ref: "#/$defs/__schema0" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(
+      thread("#/components/schemas/Schema"),
+      { components },
+    );
+    const second = convertToOpenAPISchema(thread("#group/0"), { components });
+
+    expect(first).toEqual({
+      properties: { first: { $ref: "#/components/schemas/Schema" } },
+      type: "object",
+    });
+    expect(second).toEqual({
+      properties: { first: { $ref: "#/components/schemas/Schema3" } },
+      type: "object",
+    });
+    expect(components.schemas).toMatchObject({
+      Schema: { const: { $ref: "#/components/schemas/Schema" } },
+      Schema3: { const: { $ref: "#group/0" } },
+    });
+  });
+
+  it("shares definitions that refer to each other alike when converted again", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    // Visiting either definition reaches the other, whichever comes first.
+    const pair = () =>
+      ({
+        $defs: {
+          __schema0: {
+            properties: { next: { $ref: "#/$defs/__schema1" } },
+            type: "object",
+          },
+          __schema1: {
+            properties: { next: { $ref: "#/$defs/__schema0" } },
+            type: "object",
+          },
+        },
+        properties: { pet: { $ref: "#/$defs/__schema0" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const results = [pair(), pair(), pair()].map((jsonSchema) =>
+      convertToOpenAPISchema(jsonSchema, { components }),
+    );
+
+    results.forEach((result) => {
+      expect(result).toEqual({
+        properties: { pet: { $ref: "#/components/schemas/Schema" } },
+        type: "object",
+      });
+    });
+    expect(components.schemas).toEqual({
+      Schema: {
+        properties: { next: { $ref: "#/components/schemas/Schema2" } },
+        type: "object",
+      },
+      Schema2: {
+        properties: { next: { $ref: "#/components/schemas/Schema" } },
+        type: "object",
+      },
+    });
+  });
 });
