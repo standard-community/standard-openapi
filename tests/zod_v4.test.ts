@@ -727,4 +727,26 @@ describe("zod v4", () => {
       });
     });
   });
+
+  it.each([
+    ["ref", "notes/Note", "notes~1Note"],
+    ["ref", "Pet~v2", "Pet~0v2"],
+    ["id", "notes/Note", "notes~1Note"],
+    ["id", "Pet~v2", "Pet~0v2"],
+  ])(
+    "escapes the %s %s in a reference to its component",
+    async (keyword, name, token) => {
+      const schema = z.object({
+        pinned: z.object({ text: z.string() }).meta({ [keyword]: name }),
+      });
+
+      const { schema: openapiSchema, components } =
+        await toOpenAPISchema(schema);
+
+      expect(openapiSchema).toMatchObject({
+        properties: { pinned: { $ref: `#/components/schemas/${token}` } },
+      });
+      expect(Object.keys(components?.schemas ?? {})).toEqual([name]);
+    },
+  );
 });

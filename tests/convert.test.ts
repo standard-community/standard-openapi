@@ -868,4 +868,42 @@ describe("convertToOpenAPISchema", () => {
       },
     });
   });
+
+  it("escapes the names of definitions that refer to each other in their references", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const pair = () =>
+      ({
+        $defs: {
+          "Pet~v2": {
+            properties: { current: { $ref: "#/$defs/pets~1Pet" } },
+            type: "object",
+          },
+          "pets/Pet": {
+            properties: { legacy: { $ref: "#/$defs/Pet~0v2" } },
+            type: "object",
+          },
+        },
+        properties: { pet: { $ref: "#/$defs/pets~1Pet" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    const first = convertToOpenAPISchema(pair(), { components });
+    const second = convertToOpenAPISchema(pair(), { components });
+
+    expect(first).toEqual({
+      properties: { pet: { $ref: "#/components/schemas/pets~1Pet" } },
+      type: "object",
+    });
+    expect(second).toEqual(first);
+    expect(components.schemas).toEqual({
+      "Pet~v2": {
+        properties: { current: { $ref: "#/components/schemas/pets~1Pet" } },
+        type: "object",
+      },
+      "pets/Pet": {
+        properties: { legacy: { $ref: "#/components/schemas/Pet~0v2" } },
+        type: "object",
+      },
+    });
+  });
 });

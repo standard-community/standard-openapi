@@ -2,6 +2,7 @@ import { toJsonSchema } from "@standard-community/standard-json";
 import type { ConversionConfig } from "@valibot/to-json-schema";
 import { convertToOpenAPISchema } from "./convert.js";
 import type { OpenAPIMetadata, ToOpenAPISchemaFn } from "./utils.js";
+import { componentReference } from "./utils.js";
 
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) => {
@@ -45,7 +46,7 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
               [metadata.ref]: _jsonSchema,
             };
             return {
-              $ref: `#/components/schemas/${metadata.ref}`,
+              $ref: componentReference(metadata.ref),
             };
           }
         }
