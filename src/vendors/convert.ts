@@ -514,8 +514,11 @@ const groupNames = (
       if (existing.some((schema) => schema === undefined)) {
         return undefined;
       }
+      // Only a reference to a component can be to a member: an external one,
+      // like `https://example.test/Schema`, can end in a member's name too.
+      const prefix = "#/components/schemas/";
       const componentMember = (ref: string) =>
-        names.indexOf(ref.slice("#/components/schemas/".length));
+        ref.startsWith(prefix) ? names.indexOf(ref.slice(prefix.length)) : -1;
       const order = names
         .map((_, start) => memberOrder(existing, componentMember, start))
         .find(

@@ -826,4 +826,46 @@ describe("convertToOpenAPISchema", () => {
       },
     });
   });
+
+  it("keeps definitions that refer to each other apart when one refers to an external schema of the same name", () => {
+    const components: OpenAPIV3_1.ComponentsObject = {};
+    const pair = (owner: string) =>
+      ({
+        $defs: {
+          __schema0: {
+            properties: {
+              next: { $ref: "#/$defs/__schema1" },
+              owner: { $ref: owner },
+            },
+            type: "object",
+          },
+          __schema1: {
+            properties: { previous: { $ref: "#/$defs/__schema0" } },
+            type: "object",
+          },
+        },
+        properties: { first: { $ref: "#/$defs/__schema0" } },
+        type: "object",
+      }) as JSONSchema7;
+
+    convertToOpenAPISchema(pair("https://example.test/Schema"), {
+      components,
+    });
+    const second = convertToOpenAPISchema(pair("#/$defs/__schema0"), {
+      components,
+    });
+
+    expect(second).toEqual({
+      properties: { first: { $ref: "#/components/schemas/Schema3" } },
+      type: "object",
+    });
+    expect(components.schemas).toMatchObject({
+      Schema: {
+        properties: { owner: { $ref: "https://example.test/Schema" } },
+      },
+      Schema3: {
+        properties: { owner: { $ref: "#/components/schemas/Schema3" } },
+      },
+    });
+  });
 });
