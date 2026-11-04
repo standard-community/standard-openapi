@@ -613,6 +613,29 @@ describe("zod v4", () => {
       });
     });
 
+    it("share their components when the pair is reached through the other one", async () => {
+      const components = {};
+
+      await toOpenAPISchema(drive, { components });
+      await toOpenAPISchema(z.object({ draft: File }).meta({ ref: "Desk" }), {
+        components,
+      });
+
+      expect(
+        Object.keys((components as { schemas: object }).schemas).toSorted(),
+      ).toEqual(["Desk", "Drive", "Schema", "Schema2"]);
+      expect(components).toMatchObject({
+        schemas: {
+          Desk: {
+            properties: { draft: { $ref: "#/components/schemas/Schema2" } },
+          },
+          Drive: {
+            properties: { root: { $ref: "#/components/schemas/Schema" } },
+          },
+        },
+      });
+    });
+
     it("get components of their own when the pair differs", async () => {
       const Album: z.ZodType<unknown> = z.object({
         title: z.string(),

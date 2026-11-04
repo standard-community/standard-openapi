@@ -359,6 +359,49 @@ const groupShape = (schemas: unknown[], memberOf: (ref: string) => number) =>
     ),
   );
 
+/**
+ * The positions of a group's members in the order they're referred to, walking
+ * from the `start`th one. A vendor can number the same group differently, when
+ * a later schema reaches it through another member, so a group is compared in
+ * this order, which follows its references rather than its keys.
+ */
+const memberOrder = (
+  schemas: unknown[],
+  memberOf: (ref: string) => number,
+  start: number,
+) => {
+  const order = [start];
+  // `order` grows while it's walked, so each member it reaches gets a turn.
+  for (const position of order) {
+    mapReferences(schemas[position], (ref) => {
+      const index = memberOf(ref);
+      if (index !== -1 && !order.includes(index)) {
+        order.push(index);
+      }
+      return ref;
+    });
+  }
+  // Members refer to each other, so the walk reaches them all, but one it
+  // doesn't still has to be compared, by position.
+  return [
+    ...order,
+    ...schemas
+      .map((_, position) => position)
+      .filter((position) => !order.includes(position)),
+  ];
+};
+
+/** A group as text, its members and the references between them in `order`. */
+const orderedShape = (
+  schemas: unknown[],
+  memberOf: (ref: string) => number,
+  order: number[],
+) =>
+  groupShape(
+    order.map((position) => schemas[position]),
+    (ref) => order.indexOf(memberOf(ref)),
+  );
+
 /** Every object inside `value`, `value` included. */
 const objectsIn = (value: unknown) => {
   const seen = new Set<unknown>();
@@ -454,24 +497,37 @@ const groupNames = (
       reference.$ref = member(position);
     });
   });
-  const shape = groupShape(schemas, (ref) =>
-    ref.startsWith("#group/") ? Number(ref.slice("#group/".length)) : -1,
-  );
+  const groupMember = (ref: string) =>
+    ref.startsWith("#group/") ? Number(ref.slice("#group/".length)) : -1;
+  const incoming = memberOrder(schemas, groupMember, 0);
+  const shape = orderedShape(schemas, groupMember, incoming);
 
-  const earlier = (generatedGroups.get(components) ?? []).find((names) => {
-    if (names.length !== keys.length) {
-      return false;
-    }
-    const existing = names.map(
-      (name) => added.get(name) ?? components.schemas?.[name],
-    );
-    return (
-      existing.every((schema) => schema !== undefined) &&
-      groupShape(existing, (ref) =>
-        names.indexOf(ref.slice("#/components/schemas/".length)),
-      ) === shape
-    );
-  });
+  // An earlier group matches when walking it from one of its members gives the
+  // same shape as walking this one from its first, and each member then shares
+  // the component in the same place in that walk.
+  const earlier = (generatedGroups.get(components) ?? [])
+    .filter((names) => names.length === keys.length)
+    .map((names) => {
+      const existing = names.map(
+        (name) => added.get(name) ?? components.schemas?.[name],
+      );
+      if (existing.some((schema) => schema === undefined)) {
+        return undefined;
+      }
+      const componentMember = (ref: string) =>
+        names.indexOf(ref.slice("#/components/schemas/".length));
+      const order = names
+        .map((_, start) => memberOrder(existing, componentMember, start))
+        .find(
+          (candidate) =>
+            orderedShape(existing, componentMember, candidate) === shape,
+        );
+      return (
+        order &&
+        keys.map((_, position) => names[order[incoming.indexOf(position)]])
+      );
+    })
+    .find((names) => names !== undefined);
   // Each member's name has to stay clear of the ones chosen before it.
   const taken = new Set(added.keys());
   const names =
