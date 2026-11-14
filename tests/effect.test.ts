@@ -117,4 +117,67 @@ describe("effect", () => {
       type: "array",
     });
   });
+
+  it.each([
+    ["pets/Pet", "pets~1Pet"],
+    ["Pet~v2", "Pet~0v2"],
+  ])(
+    "escapes the identifier %s in a reference to its component",
+    async (identifier, token) => {
+      const Pet = Schema.Struct({ name: Schema.String }).annotations({
+        identifier,
+      });
+
+      const { schema, components } = await toOpenAPISchema(
+        Schema.standardSchemaV1(Schema.Struct({ resident: Pet })),
+      );
+
+      expect(schema).toMatchObject({
+        properties: { resident: { $ref: `#/components/schemas/${token}` } },
+      });
+      expect(Object.keys(components?.schemas ?? {})).toEqual([identifier]);
+    },
+  );
+
+  it("escapes the identifiers of schemas that refer to each other in their references", async () => {
+    interface Pet {
+      readonly legacy?: LegacyPet;
+      readonly name: string;
+    }
+    interface LegacyPet {
+      readonly current: Pet;
+    }
+    const Pet: Schema.Schema<Pet> = Schema.Struct({
+      legacy: Schema.optional(
+        Schema.suspend((): Schema.Schema<LegacyPet> => LegacyPet),
+      ),
+      name: Schema.String,
+    }).annotations({ identifier: "pets/Pet" });
+    const LegacyPet: Schema.Schema<LegacyPet> = Schema.Struct({
+      current: Schema.suspend((): Schema.Schema<Pet> => Pet),
+    }).annotations({ identifier: "Pet~v2" });
+    const shelter = Schema.standardSchemaV1(Schema.Struct({ resident: Pet }));
+    const components = {};
+
+    const first = await toOpenAPISchema(shelter, { components });
+    const second = await toOpenAPISchema(shelter, { components });
+
+    expect(first.schema).toMatchObject({
+      properties: { resident: { $ref: "#/components/schemas/pets~1Pet" } },
+    });
+    expect(second.schema).toEqual(first.schema);
+    expect(components).toMatchObject({
+      schemas: {
+        "Pet~v2": {
+          properties: { current: { $ref: "#/components/schemas/pets~1Pet" } },
+        },
+        "pets/Pet": {
+          properties: { legacy: { $ref: "#/components/schemas/Pet~0v2" } },
+        },
+      },
+    });
+    expect(
+      Object.keys((components as { schemas: object }).schemas).toSorted(),
+    ).toEqual(["Pet~v2", "pets/Pet"]);
+  });
 });

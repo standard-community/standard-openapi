@@ -233,4 +233,24 @@ describe("valibot", () => {
       type: "array",
     });
   });
+
+  it.each([
+    ["notes/Note", "notes~1Note"],
+    ["Pet~v2", "Pet~0v2"],
+  ])(
+    "escapes the ref %s in a reference to its component",
+    async (ref, token) => {
+      const schema = v.object({
+        pinned: v.pipe(v.object({ text: v.string() }), v.metadata({ ref })),
+      });
+
+      const { schema: openapiSchema, components } =
+        await toOpenAPISchema(schema);
+
+      expect(openapiSchema).toMatchObject({
+        properties: { pinned: { $ref: `#/components/schemas/${token}` } },
+      });
+      expect(Object.keys(components?.schemas ?? {})).toEqual([ref]);
+    },
+  );
 });

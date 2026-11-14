@@ -1,6 +1,7 @@
 import type { JSONSchema7 } from "json-schema";
 import type { OpenAPIV3_1 } from "openapi-types";
 import type { ToOpenAPISchemaContext } from "./utils.js";
+import { componentReference, unescapeToken } from "./utils.js";
 
 /**
  * What a local `$ref` in a converted schema can point at: `#` is the root
@@ -73,8 +74,7 @@ const describeDocument = (jsonSchema: JSONSchema7): SchemaDocument => {
 /** The `$defs`/`definitions` key a local `$ref` points at, if it points at one. */
 const definitionKey = ($ref: string) => {
   const token = /^#\/(?:\$defs|definitions)\/(.+)$/.exec($ref)?.[1];
-  // A JSON Pointer token escapes `/` as `~1` and `~` as `~0`, in that order.
-  return token?.replaceAll("~1", "/").replaceAll("~0", "~");
+  return token === undefined ? undefined : unescapeToken(token);
 };
 
 /** The component a local `$ref` points at, when it's a named schema. */
@@ -284,8 +284,7 @@ const matchingRoot = (
     ([name, { base }]) =>
       base === "Root" &&
       Object.hasOwn(components.schemas ?? {}, name) &&
-      rootShape(components.schemas?.[name], `#/components/schemas/${name}`) ===
-        shape,
+      rootShape(components.schemas?.[name], componentReference(name)) === shape,
   )?.[0];
 };
 
@@ -315,7 +314,7 @@ const liftedName = (
   const base = GENERATED_KEY.test(key) ? "Schema" : key;
   const shape = (name: string, candidate: unknown) => {
     references.forEach((reference) => {
-      reference.$ref = `#/components/schemas/${name}`;
+      reference.$ref = componentReference(name);
     });
     return JSON.stringify(candidate);
   };
@@ -514,11 +513,10 @@ const groupNames = (
       if (existing.some((schema) => schema === undefined)) {
         return undefined;
       }
-      // Only a reference to a component can be to a member: an external one,
+      // A member is matched by its whole, escaped reference: an external one,
       // like `https://example.test/Schema`, can end in a member's name too.
-      const prefix = "#/components/schemas/";
       const componentMember = (ref: string) =>
-        ref.startsWith(prefix) ? names.indexOf(ref.slice(prefix.length)) : -1;
+        names.findIndex((name) => componentReference(name) === ref);
       const order = names
         .map((_, start) => memberOrder(existing, componentMember, start))
         .find(
@@ -547,7 +545,7 @@ const groupNames = (
 
   references.forEach((group, position) => {
     group.forEach((reference) => {
-      reference.$ref = `#/components/schemas/${names[position]}`;
+      reference.$ref = componentReference(names[position]);
     });
   });
   return { names, shared: earlier !== undefined };
@@ -567,7 +565,7 @@ const moveGeneratedRoot = (
   components.schemas[name] = components.schemas[id];
   delete components.schemas[id];
   for (const reference of generated.references) {
-    reference.$ref = `#/components/schemas/${name}`;
+    reference.$ref = componentReference(name);
   }
   roots?.delete(id);
   roots?.set(name, generated);
@@ -625,7 +623,7 @@ const use = (
 
   const reference: OpenAPIV3_1.ReferenceObject = {
     ...siblings,
-    $ref: `#/components/schemas/${id}`,
+    $ref: componentReference(id),
     ...(!shared && description !== undefined ? { description } : {}),
   };
 
@@ -1036,7 +1034,7 @@ const convert = (
     const key = definitionKey($ref);
     if (key !== undefined && Object.hasOwn(document.lifted, key)) {
       const name = document.lifted[key];
-      const reference = { ...rest, $ref: `#/components/schemas/${name}` };
+      const reference = { ...rest, $ref: componentReference(name) };
       follow(name, [reference], context.components);
       return reference;
     }
@@ -1055,9 +1053,14 @@ const convert = (
         .reference;
     }
 
+    // Anything else is taken to be a component named by the reference's last
+    // token, which is unescaped first, so a name that has `/` or `~` in it,
+    // like `valibot` writes for its `ref`, isn't escaped twice.
     return {
       ...rest,
-      $ref: `#/components/schemas/${named ?? $ref.split("/").pop()}`,
+      $ref: componentReference(
+        named ?? unescapeToken($ref.split("/").at(-1) ?? ""),
+      ),
     };
   }
 
