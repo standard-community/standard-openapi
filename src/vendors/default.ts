@@ -5,7 +5,10 @@ import type { ToOpenAPISchemaFn } from "./utils.js";
 export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) =>
     convertToOpenAPISchema(
-      await toJsonSchema(schema, context.options),
+      await toJsonSchema(schema, {
+        io: context.io,
+        ...context.options,
+      }),
       context,
     );
 }
