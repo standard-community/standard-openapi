@@ -60,6 +60,14 @@ const schema = v.pipe(
 const openapiSchema = await toOpenAPISchema(schema);
 ```
 
+Use `io: "output"` to describe a response after a schema applies defaults or
+transforms; input conversion is the default. Explicit vendor options in
+`options` take precedence over `io`.
+
+```ts
+const responseSchema = await toOpenAPISchema(schema, { io: "output" });
+```
+
 ### Sync Usage
 
 #### Adding support for Unsupported validation libs
