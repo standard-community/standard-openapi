@@ -6,7 +6,7 @@ export default function getToOpenAPISchemaFn(): ToOpenAPISchemaFn {
   return async (schema, context) =>
     convertToOpenAPISchema(
       await toJsonSchema(schema, {
-        io: context.io,
+        io: context.io ?? "input",
         ...context.options,
       }),
       context,
