@@ -1,4 +1,42 @@
 # Changelog
+## 0.2.12
+
+### Breaking Changes 🛠
+
+- (types) Type a converted schema as a schema or a reference by @MichaelDeBoey in [#55](https://github.com/standard-community/standard-openapi/pull/55)
+
+### New Features ✨
+
+#### Schema
+
+- Choose whether a schema's input or output is converted by @MichaelDeBoey in [#53](https://github.com/standard-community/standard-openapi/pull/53)
+- Flatten nested unions and intersections by @MichaelDeBoey in [#44](https://github.com/standard-community/standard-openapi/pull/44)
+
+### Bug Fixes 🐛
+
+#### Schema
+
+- Honor input and output selection for JSON converters by @MathurAditya724 in [#66](https://github.com/standard-community/standard-openapi/pull/66)
+- Escape component names in references by @MichaelDeBoey in [#64](https://github.com/standard-community/standard-openapi/pull/64)
+- Share unnamed definitions that refer to other ones by @MichaelDeBoey in [#61](https://github.com/standard-community/standard-openapi/pull/61)
+- Give each unnamed definition its own component by @MichaelDeBoey in [#35](https://github.com/standard-community/standard-openapi/pull/35)
+- Rewrite a draft-07 tuple to `prefixItems` by @MichaelDeBoey in [#59](https://github.com/standard-community/standard-openapi/pull/59)
+- Name a component after a Zod 4 schema's `id` by @MichaelDeBoey in [#57](https://github.com/standard-community/standard-openapi/pull/57)
+- Reuse the component of an unnamed recursive root converted again by @MichaelDeBoey in [#33](https://github.com/standard-community/standard-openapi/pull/33)
+- Accept null alongside a nullable schema's other restrictions by @MichaelDeBoey in [#42](https://github.com/standard-community/standard-openapi/pull/42)
+- Rewrite draft-07 dependencies to their 2020-12 keywords by @MichaelDeBoey in [#37](https://github.com/standard-community/standard-openapi/pull/37)
+
+#### Valibot
+
+- Describe a transforming pipe's input by default by @MichaelDeBoey in [#48](https://github.com/standard-community/standard-openapi/pull/48)
+- Keep `ref` and `example` metadata alongside a caller's `overrideAction` by @MichaelDeBoey in [#46](https://github.com/standard-community/standard-openapi/pull/46)
+- Convert the whole result, not only its piped actions by @MichaelDeBoey in [#43](https://github.com/standard-community/standard-openapi/pull/43)
+
+### Internal Changes 🔧
+
+- (deps) Update vulnerable development dependencies by @MathurAditya724 in [#62](https://github.com/standard-community/standard-openapi/pull/62)
+- (schema) Copy a schema once before converting it by @MichaelDeBoey in [#52](https://github.com/standard-community/standard-openapi/pull/52)
+
 ## 0.2.11
 
 ### Bug Fixes 🐛
