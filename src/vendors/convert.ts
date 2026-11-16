@@ -863,9 +863,13 @@ const convert = (
   // OpenAPI 3.1, into `dependentSchemas` for schema values and
   // `dependentRequired` for property lists, and a 3.1 validator ignores it.
   // Rewriting it keeps what it says, and its schemas are converted below.
+  // Draft-03 also lets a dependency name a single property instead of a list.
   const { dependencies } = _jsonSchema;
   if (dependencies && typeof dependencies === "object") {
-    const entries = Object.entries<unknown>(dependencies);
+    const entries = Object.entries<unknown>(dependencies).map(
+      ([property, value]) =>
+        [property, typeof value === "string" ? [value] : value] as const,
+    );
     const lists = entries.filter(([, value]) => Array.isArray(value));
     const schemas = entries.filter(([, value]) => !Array.isArray(value));
     if (schemas.length > 0) {

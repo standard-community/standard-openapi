@@ -252,6 +252,23 @@ describe("convertToOpenAPISchema", () => {
     expect(components.schemas).toHaveProperty("Billing");
   });
 
+  it("rewrites a draft-03 dependency on a single property to a list of it", () => {
+    const jsonSchema = {
+      dependencies: { coupon: "campaign", gift: ["message", "recipient"] },
+      type: "object",
+    };
+
+    expect(
+      convertToOpenAPISchema(jsonSchema as JSONSchema7, { components: {} }),
+    ).toEqual({
+      dependentRequired: {
+        coupon: ["campaign"],
+        gift: ["message", "recipient"],
+      },
+      type: "object",
+    });
+  });
+
   it("keeps a 2020-12 dependency over a draft-07 one for the same property", () => {
     const jsonSchema = {
       dependencies: { card: ["billing"] },
