@@ -11,6 +11,9 @@ export const getToOpenAPISchemaFn = async (
   let vendorFn: ToOpenAPISchemaFn;
 
   switch (vendor) {
+    case "arktype":
+      vendorFn = (await import("./arktype.js")).default();
+      break;
     case "valibot":
       vendorFn = (await import("./valibot.js")).default();
       break;
